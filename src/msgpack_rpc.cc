@@ -3,6 +3,8 @@
 #include <cassert>
 #include <QtDebug>
 
+#include <iostream>
+
 
 class QIODeviceWrapper {
     QIODevice* iodevice_;
@@ -47,7 +49,6 @@ int MsgpackRpc::call(std::string const& method, msgpack::object const& params,
 void MsgpackRpc::do_read() {
     auto bytes_available = iodevice_->bytesAvailable();
     assert(bytes_available > 0);
-    qDebug() << "Reading " << bytes_available;
 
     unpacker_.reserve_buffer(bytes_available);
     auto read_ret = iodevice_->read(unpacker_.buffer(), bytes_available);
@@ -103,6 +104,7 @@ void MsgpackRpc::do_read() {
             assert(notification_body.get<0>() == 2);
 
             qDebug() << "Received msgpack notification " << notification_body.get<1>().c_str();
+            // std::cerr << notification_body.get<2>() << std::endl;
             emit on_notification(notification_body.get<1>(),
                                  notification_body.get<2>());
         } else {

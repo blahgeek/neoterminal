@@ -1,31 +1,33 @@
 #pragma once
 
+#include <QObject>
 #include <QWidget>
-#include <QFont>
-#include <QFontMetricsF>
+#include <QIODevice>
 
-class TermWidget : public QWidget {
+#include <utility>
+#include <memory>
+
+class MsgpackRpc;
+class TermUIWidget;
+class TermUIState;
+
+class TermWidget: public QWidget {
+    Q_OBJECT;
 
 private:
-    QFont font_;
-    QFontMetricsF font_metrics_;
 
-    QSizeF cell_size_;
-    QSize grid_size_;
-    QPointF grid_offset_;
+    std::unique_ptr<MsgpackRpc> rpc_;
+    std::unique_ptr<TermUIState> ui_state_;
+    std::unique_ptr<TermUIWidget> ui_widget_;
 
-private:
-
-    void calculateGrid();
-
-    void paintDebugGrid(QPaintEvent* event, QPainter* painter);
+    bool attached_ = false;
 
 public:
-    TermWidget(QFont const& font);
+    TermUIWidget* term_ui_widget() { return ui_widget_.get(); }
 
-    void setFont(QFont const& font);
+    TermWidget(std::unique_ptr<QIODevice> io);
 
-protected:
-    void paintEvent(QPaintEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
+private slots:
+    void send_attach_or_resize();
+
 };

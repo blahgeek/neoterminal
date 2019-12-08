@@ -12,22 +12,22 @@
 #include <iostream>
 
 #include "./term_widget.h"
-#include "./msgpack_rpc.h"
+#include "./term_ui_widget.h"
 
 
-#define CONTENT_TEXT "Hello world() 你好世界OMG ++ -> 🦃🍗"
-// #define CONTENT_TEXT "Hello world() 你好世界OMG ++ -> "
+// #define CONTENT_TEXT "Hello world() 你好世界OMG ++ -> 🦃🍗"
+#define CONTENT_TEXT "Hello world() 你好世界OMG ++ -> "
 #define CONTENT_REPEAT 1000
 
 
-class MyWindow: public QOpenGLWidget {
+class MyWindow: public QWidget {
 
 private:
     QFont font = QFont("Fira Code", 14);
 
 public:
 
-    void paintGL() override {
+    void paintEvent(QPaintEvent* event) override {
         // this->draw_naive();
         // this->draw_steps();
         this->draw_static();
@@ -99,19 +99,30 @@ int main(int argc, char* argv[]) {
     // term.show();
 
     // MyWindow window;
-    // window.resize(QSize(1000, 1000));
+    // // window.resize(QSize(1000, 1000));
     // window.show();
-    // window.draw_naive();
+    // // window.draw_naive();
+
     QTcpSocket* socket = new QTcpSocket();
     socket->connectToHost(argv[1], atoi(argv[2]));
 
-    MsgpackRpc rpc ((std::unique_ptr<QIODevice>(socket)));
-
-    msgpack::zone zone;
-    msgpack::type::tuple<int, int, std::map<std::string, bool>> params(30, 30, std::map<std::string, bool>());
-    msgpack::object obj(params, zone);
-
-    rpc.call("nvim_ui_attach", obj);
+    TermWidget term((std::unique_ptr<QIODevice>(socket)));
+    term.term_ui_widget()->setFont(QFont("Fira Code", 12));
+    term.show();
+    // TermUI ui;
+    //
+    // MsgpackRpc rpc ((std::unique_ptr<QIODevice>(socket)));
+    // QObject::connect(&rpc, &MsgpackRpc::on_notification,
+    //                  [&](std::string const& method, msgpack::object const& params) {
+    //                      if (method == "redraw")
+    //                          ui.redraw(params);
+    //                  });
+    //
+    // msgpack::zone zone;
+    // msgpack::type::tuple<int, int, std::map<std::string, bool>> params(80, 40, std::map<std::string, bool>({{"ext_linegrid", true}}));
+    // msgpack::object obj(params, zone);
+    //
+    // rpc.call("nvim_ui_attach", obj);
 
     return app.exec();
 }
