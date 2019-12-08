@@ -8,6 +8,7 @@
 #include <tuple>
 #include <type_traits>
 #include <chrono>
+#include <iostream>
 
 namespace {
     // haha.. magic!
@@ -102,6 +103,10 @@ TermUIState::Highlight const& TermUIState::highlight(highlight_id_t id) const {
     return default_highlight_;
 }
 
+TermUIState::Modeinfo const& TermUIState::modeinfo() const {
+    return (mode_idx_ >= 0 && mode_idx_ < modeinfos_.size()) ? modeinfos_[mode_idx_] : default_modeinfo_;
+}
+
 void TermUIState::redraw(msgpack::object const& params) {
     assert(params.type == msgpack::type::ARRAY);
 
@@ -138,6 +143,9 @@ void TermUIState::redraw(msgpack::object const& params) {
         TRY_HANDLE(grid_clear);
         TRY_HANDLE(grid_scroll);
         TRY_HANDLE(flush);
+        TRY_HANDLE(mode_info_set);
+        TRY_HANDLE(mode_change);
+        TRY_HANDLE(grid_cursor_goto);
 
 #undef TRY_HANDLE
 
@@ -239,6 +247,12 @@ void TermUIState::refresh_contiguous_text(int row, int start, int end) {
     assert(row >= 0 && row < height_);
     auto& cells_row = this->cells_[row];
 
+    // expand to all non-whitelist cells
+    while (start > 0 && !cells_row[start-1].is_whitespace())
+        start -= 1;
+    while (end < width_ && !cells_row[end].is_whitespace())
+        end += 1;
+
     int x_start = start;
     if (x_start < width_ && cells_row[x_start].contiguous_cols < 0)
         x_start += cells_row[x_start].contiguous_cols;
@@ -263,8 +277,9 @@ void TermUIState::refresh_contiguous_text(int row, int start, int end) {
         if (x == x_end
             || cells_row[x].is_whitespace()
             || cells_row[anchor_x].is_whitespace()
-            || cells_row[anchor_x].is_empty()
             || (x > 0 && cells_row[x-1].is_empty())
+            || QPoint(x, row) == cursor_
+            || (QPoint(anchor_x, row) == cursor_ && !cells_row[x].is_empty())  // double width
             || cells_row[x].highlight_id != cells_row[anchor_x].highlight_id) {
             // if it's whitelist, keep contiguous_cols = 0
             if (!cells_row[anchor_x].is_whitespace() && !cells_row[anchor_x].is_empty()) {
@@ -343,4 +358,46 @@ void TermUIState::handle_flush() {
 
     emit updated(dirty_cells_);
     dirty_cells_ = QRegion(0, 0, 0, 0);
+}
+
+
+void TermUIState::handle_mode_info_set(bool cursor_style_enabled,
+                                       std::vector<Modeinfo> mode_infos) {
+    qDebug() << "handle_mode_info_set";
+
+    if (!cursor_style_enabled)
+        modeinfos_.clear();
+    else
+        modeinfos_ = std::move(mode_infos);
+
+    this->refresh_cursor(cursor_);
+}
+
+void TermUIState::handle_mode_change(std::string const& mode, int mode_idx) {
+    qDebug() << "handle_mode_change" << mode.c_str() << mode_idx;
+
+    mode_ = mode;
+    mode_idx_ = mode_idx;
+
+    this->refresh_cursor(cursor_);
+}
+
+void TermUIState::handle_grid_cursor_goto(int grid, int row, int col) {
+    assert(grid == 1);
+    qDebug() << "handle_grid_cursor_goto" << row << col;
+
+    this->refresh_cursor(QPoint(col, row));
+}
+
+void TermUIState::refresh_cursor(QPoint new_pos) {
+    assert(new_pos.x() >= 0 && new_pos.y() >= 0);
+    assert(new_pos.x() < width_ && new_pos.y() < height_);
+
+    QPoint old_pos = cursor_;
+    cursor_ = new_pos;
+
+    if (old_pos != new_pos && old_pos.x() >= 0 && old_pos.y() >= 0 && old_pos.x() < width_ && old_pos.y() < height_)
+        this->refresh_contiguous_text(old_pos.y(), old_pos.x(), old_pos.x() + 1);
+
+    this->refresh_contiguous_text(new_pos.y(), new_pos.x(), new_pos.x() + 1);
 }

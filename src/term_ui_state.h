@@ -47,6 +47,18 @@ public:
                            blend);
     };
 
+    struct Modeinfo {
+        std::string cursor_shape = "block"; // block, horizontal, vertical
+        int cell_percentage = 100;
+        // TODO: blink* not implemented
+        highlight_id_t attr_id = 0;  // highlight id
+        std::string short_name;
+        std::string name;
+
+        MSGPACK_DEFINE_MAP(cursor_shape, cell_percentage,
+                           attr_id, short_name, name);
+    };
+
     friend struct Highlight;
 
 private:
@@ -70,14 +82,24 @@ private:
     };
 
     std::vector<std::vector<Cell>> cells_;
+    QRegion dirty_cells_;
 
     int width_ = 0, height_ = 0;
-    QRegion dirty_cells_;
+
+    // modes & cursors
+    std::string mode_;
+    int mode_idx_ = -1;
+    std::vector<Modeinfo> modeinfos_;
+    Modeinfo default_modeinfo_;
+    QPoint cursor_ = QPoint(-1, -1);
 
 public:
     QSize size() const { return QSize(width_, height_); }
     Cell const& cell_at(int x, int y) { return cells_[y][x]; }
     Highlight const& highlight(highlight_id_t id) const;
+
+    QPoint cursor() const { return cursor_; }
+    Modeinfo const& modeinfo() const;
 
 public:
     TermUIState();
@@ -100,6 +122,12 @@ private:
     void handle_grid_scroll(int grid, int top, int bot, int left, int right, int rows, int cols);
     void handle_flush();
 
+    void handle_mode_info_set(bool cursor_style_enabled,
+                              std::vector<Modeinfo> mode_infos);
+    void handle_mode_change(std::string const& mode, int mode_idx);
+    void handle_grid_cursor_goto(int grid, int row, int col);
+
 private:
     void refresh_contiguous_text(int row, int start, int end);
+    void refresh_cursor(QPoint new_pos);
 };

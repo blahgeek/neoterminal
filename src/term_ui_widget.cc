@@ -96,27 +96,59 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
             QPointF pt_lefttop(grid_offset_.x() + x * cell_size_.width(),
                                grid_offset_.y() + y * cell_size_.height());
             int affected_cols = std::max(1, cell.contiguous_cols);
-            x += affected_cols;
 
             QRectF affected_rect(pt_lefttop, QSizeF(affected_cols * cell_size_.width(), cell_size_.height()));
             QRect affected_rect_bound(
                     QPoint(std::floor(affected_rect.left()), std::floor(affected_rect.top())),
                     QPoint(std::ceil(affected_rect.right()), std::ceil(affected_rect.bottom())));
-            if (!redraw_region.intersects(affected_rect_bound))
+            if (!redraw_region.intersects(affected_rect_bound)) {
+                x += affected_cols;
                 continue;
+            }
 
             auto const& highlight = state_->highlight(cell.highlight_id);
-            painter.fillRect(affected_rect, highlight.effective_background());
+            bool reverse_color = highlight.reverse;
+            bool draw_horizontal_cursor = false;
+            bool draw_vertical_cursor = false;
+
+            // draw cursor?
+            // The cursor (if valid) must be at the begin of contiguous cols
+            if (QPoint(x, y) == state_->cursor()) {
+                auto const& modeinfo = state_->modeinfo();
+                // TODO: modeinfo.attr_id seems useless now, we just use reversed color for now
+                if (modeinfo.cursor_shape == "block")
+                    reverse_color = true;
+                if (modeinfo.cursor_shape == "horizontal")
+                    draw_horizontal_cursor = true;
+                if (modeinfo.cursor_shape == "vertical")
+                    draw_vertical_cursor = true;
+            }
+
+            painter.fillRect(affected_rect,
+                             reverse_color ?
+                             highlight.effective_foreground() :
+                             highlight.effective_background());
+
+            QPen pen(reverse_color ?
+                     highlight.effective_background() :
+                     highlight.effective_foreground());
+            painter.setPen(pen);
+
+            if (draw_horizontal_cursor)
+                painter.drawLine(QLineF(affected_rect.bottomLeft() - QPointF(0, 1),
+                                        affected_rect.bottomRight() - QPointF(0, 1)));
+            if (draw_vertical_cursor)
+                painter.drawLine(QLineF(affected_rect.topLeft() + QPointF(1, 0),
+                                        affected_rect.bottomLeft() + QPointF(1, 0)));
 
             if (cell.contiguous_cols > 0) {
-                QPen pen(highlight.effective_foreground());
-                painter.setPen(pen);
-
                 // TODO: bold, italics, ..
                 painter.drawText(pt_lefttop + QPointF(0, font_metrics_.ascent()),
                                  cell.contiguous_text);
                 // qDebug() << cell.contiguous_text;
             }
+
+            x += affected_cols;
         }
     }
 
