@@ -2,10 +2,12 @@
 #include <QPainter>
 #include <QPen>
 #include <QPaintEvent>
+#include <QKeyEvent>
 
 #include <cmath>
 
 #include "./term_ui_widget.h"
+#include "./keycodes.h"
 
 
 #define ASCII_STRING " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
@@ -196,4 +198,12 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
 
 void TermUIWidget::resizeEvent(QResizeEvent* event) {
     this->calculateGrid();
+}
+
+void TermUIWidget::keyPressEvent(QKeyEvent* event) {
+    // qDebug() << event->key() << event->text() << event->modifiers();
+    std::string vim_keycodes = term_keycode_translate(event);
+    qDebug() << "keyPressEvent" << vim_keycodes.c_str();
+    if (!vim_keycodes.empty())
+        emit keyPressed(std::move(vim_keycodes));
 }

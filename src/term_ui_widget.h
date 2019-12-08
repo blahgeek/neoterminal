@@ -26,6 +26,7 @@ private:
 
 signals:
     void gridSizeChanged();
+    void keyPressed(std::string vim_keycodes);
 
 public slots:
     void redrawCells(QRegion dirty_cells);
@@ -46,4 +47,5 @@ public:
 protected:
     void paintEvent(QPaintEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 };

@@ -31,8 +31,8 @@ bool MsgpackRpc::is_open() {
 }
 
 
-int MsgpackRpc::call(std::string const& method, msgpack::object const& params,
-                     callback_t callback) {
+int MsgpackRpc::call_internal(std::string const& method, msgpack::object const& params,
+                              callback_t callback) {
     QIODeviceWrapper iodevice_wrapper(this->iodevice_.get());
 
     uint32_t id = counter_++;

@@ -18,10 +18,15 @@ TermWidget::TermWidget(std::unique_ptr<QIODevice> io) {
     layout->addWidget(ui_widget_.get());
     this->setLayout(layout);
 
+    ui_widget_->setFocus();
     QObject::connect(rpc_.get(), &MsgpackRpc::on_notification,
                      [this](std::string const& method, msgpack::object const& params) {
                          if (method == "redraw")
                              ui_state_->redraw(params);
+                     });
+    QObject::connect(ui_widget_.get(), &TermUIWidget::keyPressed,
+                     [this](std::string const& vim_keycodes) {
+                         rpc_->call("nvim_input", vim_keycodes);
                      });
 
     QObject::connect(ui_widget_.get(), &TermUIWidget::gridSizeChanged,
@@ -39,14 +44,14 @@ TermWidget::TermWidget(std::unique_ptr<QIODevice> io) {
 void TermWidget::send_attach_or_resize() {
     QSize grid_size = ui_widget_->grid_size();
 
-    msgpack::zone zone;
+    // msgpack::zone zone;
     if (attached_) {
-        msgpack::type::tuple<int, int> params(grid_size.width(), grid_size.height());
-        rpc_->call("nvim_ui_try_resize", msgpack::object(params, zone));
+        rpc_->call("nvim_ui_try_resize",
+                   grid_size.width(), grid_size.height());
     } else {
-        msgpack::type::tuple<int, int, std::map<std::string, bool>>
-            params(grid_size.width(), grid_size.height(), std::map<std::string, bool>({{"ext_linegrid", true}}));
-        rpc_->call("nvim_ui_attach", msgpack::object(params, zone));
+        rpc_->call("nvim_ui_attach",
+                   grid_size.width(), grid_size.height(),
+                   std::map<std::string, bool>({{"ext_linegrid", true}}));
         attached_ = true;
     }
 }

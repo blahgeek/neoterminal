@@ -93,6 +93,8 @@ public:
 
 
 int main(int argc, char* argv[]) {
+    QCoreApplication::setAttribute(Qt::AA_MacDontSwapCtrlAndMeta, true);
+
     QApplication app(argc, argv);
 
     // TermWidget term(QFont("Fira Code", 14));

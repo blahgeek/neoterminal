@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QWidget>
 #include <QIODevice>
+#include <QLineEdit>
 
 #include <utility>
 #include <memory>

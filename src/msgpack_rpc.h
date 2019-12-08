@@ -20,8 +20,12 @@ public:
     // callback: (erro_code, obj)
     using callback_t = std::function<void(int, msgpack::object const&)>;
 
-    int call(std::string const& method, msgpack::object const& params,
-             callback_t callback=callback_t());
+    template <typename ... Args>
+    int call(std::string const& method, callback_t callback, Args const&... args);
+
+    template <typename ... Args>
+    int call(std::string const& method, Args const&... args);
+
     bool is_open();
 
 signals:
@@ -37,4 +41,21 @@ private:
 
 private:
     void do_read();
+
+    int call_internal(std::string const& method, msgpack::object const& params,
+                      callback_t callback=callback_t());
+
 };
+
+
+template <typename ... Args>
+int MsgpackRpc::call(std::string const& method, callback_t callback, Args const&... args) {
+    msgpack::zone zone;
+    msgpack::type::tuple<Args...> params(args...);
+    return this->call_internal(method, msgpack::object(params, zone), callback);
+}
+
+template <typename ... Args>
+int MsgpackRpc::call(std::string const& method, Args const&... args) {
+    return this->call(method, callback_t(), args...);
+}
