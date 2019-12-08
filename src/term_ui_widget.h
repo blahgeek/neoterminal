@@ -2,6 +2,8 @@
 
 #include <QWidget>
 #include <QFont>
+#include <QCache>
+#include <QStaticText>
 #include <QFontMetricsF>
 
 #include "./msgpack_rpc.h"
@@ -19,6 +21,8 @@ private:
     QPointF grid_offset_;
 
     TermUIState* state_; // not owned
+
+    QCache<QPair<uint32_t, QString>, QStaticText> static_texts_;
 
 signals:
     void gridSizeChanged();

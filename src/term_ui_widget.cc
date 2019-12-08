@@ -9,11 +9,13 @@
 
 
 #define ASCII_STRING " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+#define STATIC_TEXTS_CACHE_SIZE 4096
 
 
 TermUIWidget::TermUIWidget(TermUIState* state, QWidget* parent):
 QWidget(parent),
-font_metrics_(QFont(), this), state_(state) {
+font_metrics_(QFont(), this), state_(state),
+static_texts_(STATIC_TEXTS_CACHE_SIZE) {
     this->calculateGrid();
 }
 
@@ -43,6 +45,7 @@ void TermUIWidget::setFont(QFont const& font) {
 
     qDebug() << "setFont: " << font_;
     this->calculateGrid();
+    static_texts_.clear();
     this->update();
 }
 
@@ -142,10 +145,41 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
                                         affected_rect.bottomLeft() + QPointF(1, 0)));
 
             if (cell.contiguous_cols > 0) {
-                // TODO: bold, italics, ..
-                painter.drawText(pt_lefttop + QPointF(0, font_metrics_.ascent()),
-                                 cell.contiguous_text);
-                // qDebug() << cell.contiguous_text;
+                QFont font = font_;
+
+                uint32_t text_flags = 0;
+                if (highlight.italic) {
+                    text_flags |= (1 << 1);
+                    font.setItalic(true);
+                }
+                if (highlight.bold) {
+                    text_flags |= (1 << 2);
+                    font.setBold(true);
+                }
+
+                QPair<uint32_t, QString> static_text_key(text_flags, cell.contiguous_text);
+                QStaticText *static_text = static_texts_.object(static_text_key);
+                if (!static_text) {
+                    static_text = new QStaticText(cell.contiguous_text);
+                    static_text->setTextFormat(Qt::PlainText);
+                    static_text->prepare(QTransform(), font_);
+                    static_texts_.insert(static_text_key, static_text);
+                }
+
+                painter.setFont(font);
+                // painter.drawText(pt_lefttop + QPointF(0, font_metrics_.ascent()),
+                //                  cell.contiguous_text);
+                painter.drawStaticText(
+                        QPointF(pt_lefttop.x(),
+                                pt_lefttop.y() - (static_text->size().height() - cell_size_.height()) * 4 / 5),  // align baseline for fallback font (80% of height)
+                        *static_text);
+
+                if (highlight.underline || highlight.undercurl) // TODO: curl?
+                    painter.drawLine(QLineF(affected_rect.bottomLeft() - QPointF(0, 1),
+                                            affected_rect.bottomRight() - QPointF(0, 1)));
+                if (highlight.strikethrough)
+                    painter.drawLine(QLineF(affected_rect.topLeft() + QPointF(0, affected_rect.height() / 2),
+                                            affected_rect.topRight() + QPointF(0, affected_rect.height() / 2)));
             }
 
             x += affected_cols;
