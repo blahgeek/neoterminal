@@ -1,24 +1,24 @@
 #include <QVBoxLayout>
 #include <QDebug>
 
-#include "./term_widget.h"
+#include "./term_controller.h"
 #include "./msgpack_rpc.h"
 #include "./term_ui_state.h"
 #include "./term_ui_widget.h"
 
 
-TermWidget::TermWidget(std::unique_ptr<QIODevice> io) {
+TermController::TermController(std::unique_ptr<QIODevice> io) {
     rpc_.reset(new MsgpackRpc(std::move(io)));
     ui_state_.reset(new TermUIState);
     ui_widget_.reset(new TermUIWidget(ui_state_.get()));
 
-    QVBoxLayout* layout = new QVBoxLayout(this);
-    // layout->setSpacing(0);
-    // layout->setMargin(0);
-    layout->addWidget(ui_widget_.get());
-    this->setLayout(layout);
+    // QVBoxLayout* layout = new QVBoxLayout(this);
+    // // layout->setSpacing(0);
+    // // layout->setMargin(0);
+    // layout->addWidget(ui_widget_.get());
+    // this->setLayout(layout);
 
-    ui_widget_->setFocus();
+    // ui_widget_->setFocus();
     QObject::connect(rpc_.get(), &MsgpackRpc::on_notification,
                      [this](std::string const& method, msgpack::object const& params) {
                          if (method == "redraw")
@@ -30,7 +30,7 @@ TermWidget::TermWidget(std::unique_ptr<QIODevice> io) {
                      });
 
     QObject::connect(ui_widget_.get(), &TermUIWidget::gridSizeChanged,
-                     this, &TermWidget::send_attach_or_resize);
+                     this, &TermController::send_attach_or_resize);
     QObject::connect(ui_state_.get(), &TermUIState::updated,
                      ui_widget_.get(), &TermUIWidget::redrawCells);
 
@@ -41,7 +41,7 @@ TermWidget::TermWidget(std::unique_ptr<QIODevice> io) {
     // rpc_->call("nvim_ui_attach", obj);
 }
 
-void TermWidget::send_attach_or_resize() {
+void TermController::send_attach_or_resize() {
     QSize grid_size = ui_widget_->grid_size();
 
     // msgpack::zone zone;

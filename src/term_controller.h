@@ -12,7 +12,7 @@ class MsgpackRpc;
 class TermUIWidget;
 class TermUIState;
 
-class TermWidget: public QWidget {
+class TermController: public QObject {
     Q_OBJECT;
 
 private:
@@ -26,7 +26,7 @@ private:
 public:
     TermUIWidget* term_ui_widget() { return ui_widget_.get(); }
 
-    TermWidget(std::unique_ptr<QIODevice> io);
+    TermController(std::unique_ptr<QIODevice> io);
 
 private slots:
     void send_attach_or_resize();
