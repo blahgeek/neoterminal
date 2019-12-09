@@ -23,7 +23,6 @@ std::string term_keycode_translate(QKeyEvent* event) {
         SPECIAL_KEY(Down, Down);
         SPECIAL_KEY(Left, Left);
         SPECIAL_KEY(Right, Right);
-        // TODO: S/C-up/left
         SPECIAL_KEY(F1, F1);
         SPECIAL_KEY(F2, F2);
         SPECIAL_KEY(F3, F3);
@@ -36,7 +35,6 @@ std::string term_keycode_translate(QKeyEvent* event) {
         SPECIAL_KEY(F10, F10);
         SPECIAL_KEY(F11, F11);
         SPECIAL_KEY(F12, F12);
-        // TODO: S-F1
         SPECIAL_KEY(Help, Help);
         SPECIAL_KEY(Undo, Undo);
         SPECIAL_KEY(Insert, Insert);

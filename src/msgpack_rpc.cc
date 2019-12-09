@@ -37,7 +37,7 @@ int MsgpackRpc::call_internal(std::string const& method, msgpack::object const& 
 
     uint32_t id = counter_++;
 
-    qDebug() << "Sending msgpack request " << id << " " << method.c_str();
+    qDebug() << "Sending msgpack request" << id << method.c_str();
     msgpack::type::tuple<int, uint32_t, std::string, msgpack::object>
         request_body(0, id, method, params);
     msgpack::pack(iodevice_wrapper, request_body);
@@ -77,7 +77,7 @@ void MsgpackRpc::do_read() {
             }
             assert(response_body.get<0>() == 1);
             uint32_t msgid = response_body.get<1>();
-            qDebug() << "Received msgpack response " << msgid;
+            qDebug() << "Received msgpack response" << msgid;
 
             auto callback_it = callbacks_.find(msgid);
             if (callback_it == callbacks_.end()) {
@@ -103,12 +103,12 @@ void MsgpackRpc::do_read() {
             }
             assert(notification_body.get<0>() == 2);
 
-            qDebug() << "Received msgpack notification " << notification_body.get<1>().c_str();
+            qDebug() << "Received msgpack notification" << notification_body.get<1>().c_str();
             // std::cerr << notification_body.get<2>() << std::endl;
             emit on_notification(notification_body.get<1>(),
                                  notification_body.get<2>());
         } else {
-            qWarning() << "Invalid msgpack array size " << obj.via.array.size;
+            qWarning() << "Invalid msgpack array size" << obj.via.array.size;
         }
     }
 }

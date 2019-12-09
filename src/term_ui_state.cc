@@ -154,13 +154,13 @@ void TermUIState::redraw(msgpack::object const& params) {
     }
 
     auto t1 = std::chrono::steady_clock::now();
-    qDebug() << "redraw finished: " << std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count() << "us";
+    qDebug() << "Parsing redraw event costs" << std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count() << "us";
 }
 
 void TermUIState::handle_grid_resize(int grid, int width, int height) {
     assert(grid == 1);
 
-    qDebug() << "handle_grid_resize " << width << height;
+    qDebug() << "handle_grid_resize" << width << height;
 
     width_ = width;
     height_ = height;
@@ -178,7 +178,7 @@ void TermUIState::handle_grid_resize(int grid, int width, int height) {
 void TermUIState::handle_default_colors_set(QColor const& fg,
                                             QColor const& bg,
                                             QColor const& sp) {
-    qDebug() << "handle_default_colors_set " << fg << bg << sp;
+    qDebug() << "handle_default_colors_set" << fg << bg << sp;
 
     default_foreground_ = fg;
     default_background_ = bg;
@@ -188,7 +188,7 @@ void TermUIState::handle_default_colors_set(QColor const& fg,
 }
 
 void TermUIState::handle_hl_attr_define(highlight_id_t id, Highlight attr) {
-    qDebug() << "hl_attr_define " << id;
+    qDebug() << "handle_hl_attr_define" << id;
 
     attr.term_ui_ = this;
     highlights_[id] = attr;
@@ -198,7 +198,7 @@ void TermUIState::handle_grid_line(int grid, int row, int col_start, msgpack::ob
     assert(grid == 1);
     assert(row >= 0 && row < height_);
     assert(col_start >= 0 && col_start < width_);
-    qDebug() << "handle_grid_line " << grid << row << col_start;
+    qDebug() << "handle_grid_line" << grid << row << col_start;
 
     auto& cells_row = this->cells_[row];
 
@@ -241,8 +241,6 @@ void TermUIState::handle_grid_line(int grid, int row, int col_start, msgpack::ob
 }
 
 void TermUIState::refresh_contiguous_text(int row, int start, int end) {
-    // qDebug() << "refresh_contiguous_text " << row << start << end;
-
     assert(end >= start);
     assert(row >= 0 && row < height_);
     auto& cells_row = this->cells_[row];
@@ -314,6 +312,8 @@ void TermUIState::handle_grid_scroll(int grid, int top, int bot, int left, int r
     assert(grid == 1);
     assert(cols == 0);
     assert(rows != 0);
+
+    qDebug() << "handle_grid_scroll" << top << bot << left << right << rows << cols;
 
     dirty_cells_ |= QRect(left, top, right-left, bot-top);
 
