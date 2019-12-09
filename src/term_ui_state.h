@@ -92,6 +92,7 @@ private:
     std::vector<Modeinfo> modeinfos_;
     Modeinfo default_modeinfo_;
     QPoint cursor_ = QPoint(-1, -1);
+    QPoint cursor_saved_on_busy_ = QPoint(-1, -1);
 
 public:
     QSize size() const { return QSize(width_, height_); }
@@ -126,6 +127,9 @@ private:
                               std::vector<Modeinfo> mode_infos);
     void handle_mode_change(std::string const& mode, int mode_idx);
     void handle_grid_cursor_goto(int grid, int row, int col);
+
+    void handle_busy_start();
+    void handle_busy_stop();
 
 private:
     void refresh_contiguous_text(int row, int start, int end);

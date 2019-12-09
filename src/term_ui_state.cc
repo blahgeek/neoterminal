@@ -146,6 +146,8 @@ void TermUIState::redraw(msgpack::object const& params) {
         TRY_HANDLE(mode_info_set);
         TRY_HANDLE(mode_change);
         TRY_HANDLE(grid_cursor_goto);
+        TRY_HANDLE(busy_start);
+        TRY_HANDLE(busy_stop);
 
 #undef TRY_HANDLE
 
@@ -386,18 +388,33 @@ void TermUIState::handle_grid_cursor_goto(int grid, int row, int col) {
     assert(grid == 1);
     qDebug() << "handle_grid_cursor_goto" << row << col;
 
-    this->refresh_cursor(QPoint(col, row));
+    if (cursor_saved_on_busy_.x() >= 0 && cursor_saved_on_busy_.y() >= 0)
+        cursor_saved_on_busy_ = QPoint(col, row);
+    else
+        this->refresh_cursor(QPoint(col, row));
+}
+
+void TermUIState::handle_busy_start() {
+    qDebug() << "handle_busy_start";
+
+    cursor_saved_on_busy_ = cursor_;
+    this->refresh_cursor(QPoint(-1, -1));
+}
+
+void TermUIState::handle_busy_stop() {
+    qDebug() << "handle_busy_stop" << cursor_saved_on_busy_;
+
+    this->refresh_cursor(cursor_saved_on_busy_);
+    cursor_saved_on_busy_ = QPoint(-1, -1);
 }
 
 void TermUIState::refresh_cursor(QPoint new_pos) {
-    assert(new_pos.x() >= 0 && new_pos.y() >= 0);
-    assert(new_pos.x() < width_ && new_pos.y() < height_);
-
     QPoint old_pos = cursor_;
     cursor_ = new_pos;
 
     if (old_pos != new_pos && old_pos.x() >= 0 && old_pos.y() >= 0 && old_pos.x() < width_ && old_pos.y() < height_)
         this->refresh_contiguous_text(old_pos.y(), old_pos.x(), old_pos.x() + 1);
 
-    this->refresh_contiguous_text(new_pos.y(), new_pos.x(), new_pos.x() + 1);
+    if (new_pos.x() >= 0 && new_pos.y() >= 0 && new_pos.x() < width_ && new_pos.y() < height_)
+        this->refresh_contiguous_text(new_pos.y(), new_pos.x(), new_pos.x() + 1);
 }
