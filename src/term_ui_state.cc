@@ -1,6 +1,8 @@
 #include "./term_ui_state.h"
 
 #include <QDebug>
+#include <QFont>
+#include <QRegularExpression>
 
 #include <algorithm>
 #include <functional>
@@ -148,11 +150,14 @@ void TermUIState::redraw(msgpack::object const& params) {
         TRY_HANDLE(grid_cursor_goto);
         TRY_HANDLE(busy_start);
         TRY_HANDLE(busy_stop);
+        TRY_HANDLE(option_set);
 
 #undef TRY_HANDLE
 
-        if (!handled)
+        if (!handled) {
             qWarning() << "Ignore draw event " << QString(QByteArray(name.ptr, name.size));
+            std::cerr << *obj << std::endl;
+        }
     }
 
     auto t1 = std::chrono::steady_clock::now();
@@ -417,4 +422,27 @@ void TermUIState::refresh_cursor(QPoint new_pos) {
 
     if (new_pos.x() >= 0 && new_pos.y() >= 0 && new_pos.x() < width_ && new_pos.y() < height_)
         this->refresh_contiguous_text(new_pos.y(), new_pos.x(), new_pos.x() + 1);
+}
+
+namespace {
+    const QRegularExpression FONT_REGEX("^([\\w\\s]+),?(\\d*)$");
+}
+
+void TermUIState::handle_option_set(std::string const& name, msgpack::object const& value) {
+    qDebug() << "handle_option_set" << name.c_str();
+
+    if (name == "guifont" && value.type == msgpack::type::STR) {
+        QString value_str = QString::fromUtf8(value.via.str.ptr, value.via.str.size);
+        auto match = FONT_REGEX.match(value_str);
+        if (match.hasMatch()) {
+            QFont font;
+            font.setFamily(match.captured(1));
+            bool size_valid = false;
+            int size = match.captured(2).toInt(&size_valid);
+            if (size_valid)
+                font.setPointSize(size);
+            qDebug() << value_str << font;
+            emit fontChangeRequested(font);
+        }
+    }
 }

@@ -109,6 +109,7 @@ public:
 
 signals:
     void updated(QRegion dirty_cells);
+    void fontChangeRequested(QFont font);
 
 private:
     void handle_grid_resize(int grid, int width, int height);
@@ -127,6 +128,7 @@ private:
                               std::vector<Modeinfo> mode_infos);
     void handle_mode_change(std::string const& mode, int mode_idx);
     void handle_grid_cursor_goto(int grid, int row, int col);
+    void handle_option_set(std::string const& name, msgpack::object const& value);
 
     void handle_busy_start();
     void handle_busy_stop();

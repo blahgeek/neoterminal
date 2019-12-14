@@ -26,6 +26,8 @@ TermController::TermController(std::unique_ptr<QIODevice> io) {
                      this, &TermController::send_attach_or_resize);
     QObject::connect(ui_state_.get(), &TermUIState::updated,
                      ui_widget_.get(), &TermUIWidget::redrawCells);
+    QObject::connect(ui_state_.get(), &TermUIState::fontChangeRequested,
+                     ui_widget_.get(), &TermUIWidget::setFont);
 }
 
 void TermController::send_attach_or_resize() {
