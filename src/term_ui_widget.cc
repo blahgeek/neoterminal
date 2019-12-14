@@ -3,6 +3,7 @@
 #include <QPen>
 #include <QPaintEvent>
 #include <QKeyEvent>
+#include <QCursor>
 
 #include <cmath>
 
@@ -18,6 +19,9 @@ TermUIWidget::TermUIWidget(TermUIState* state, QWidget* parent):
 QWidget(parent),
 font_metrics_(QFont(), this), state_(state),
 static_texts_(STATIC_TEXTS_CACHE_SIZE) {
+
+    this->setAttribute(Qt::WA_InputMethodEnabled);
+
     this->calculateGrid();
 }
 
@@ -189,6 +193,23 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
         }
     }
 
+    if (!im_preedit_text_.isEmpty()) {
+        auto const& highlight = state_->highlight(0);
+        QPen pen(highlight.reverse ?
+                 highlight.effective_background() :
+                 highlight.effective_foreground());
+        auto cursor = state_->cursor();
+        QPointF pt_lefttop(grid_offset_.x() + cursor.x() * cell_size_.width(),
+                           grid_offset_.y() + cursor.y() * cell_size_.height());
+        QFont font = font_;
+        font.setUnderline(true);
+        painter.setFont(font);
+        painter.setPen(pen);
+        painter.drawText(pt_lefttop + QPointF(0, font_metrics_.ascent()),
+                         im_preedit_text_);
+    }
+
+
     // this->paintDebugGrid(event, &painter);
 
     auto t1 = std::chrono::steady_clock::now();
@@ -207,4 +228,44 @@ void TermUIWidget::keyPressEvent(QKeyEvent* event) {
         emit keyPressed(std::move(vim_keycodes));
         event->setAccepted(true);
     }
+}
+
+QVariant TermUIWidget::inputMethodQuery(Qt::InputMethodQuery query) const {
+    QPoint cursor = state_->cursor();
+
+    switch (query) {
+        case Qt::ImEnabled:
+            return true;
+        case Qt::ImFont:
+            return font_;
+        case Qt::ImCursorRectangle:
+            {
+                QPoint cursor = state_->cursor();
+                return QRect(grid_offset_.x() + cursor.x() * cell_size_.width(),
+                             grid_offset_.y() + cursor.y() * cell_size_.height(),
+                             cell_size_.width(), cell_size_.height());
+            }
+        default:
+            break;
+    }
+
+    return QVariant();
+}
+
+void TermUIWidget::inputMethodEvent(QInputMethodEvent* event) {
+    qDebug() << "inputMethodEvent"
+        << event->preeditString() << event->commitString()
+        << event->replacementLength() << event->replacementStart();
+
+    QPoint cursor = state_->cursor();
+    im_preedit_text_ = event->preeditString();
+    this->update(grid_offset_.x() + cursor.x() * cell_size_.width(),
+                 grid_offset_.y() + cursor.y() * cell_size_.height(),
+                 (grid_size_.width() - cursor.x()) * cell_size_.width(),
+                 cell_size_.height());
+
+    if (!event->commitString().isEmpty())
+        emit keyPressed(event->commitString().toStdString());
+
+    event->setAccepted(true);
 }

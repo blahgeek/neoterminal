@@ -20,6 +20,8 @@ private:
     QSize grid_size_;
     QPointF grid_offset_;
 
+    QString im_preedit_text_;
+
     TermUIState* state_; // not owned
 
     QCache<QPair<uint32_t, QString>, QStaticText> static_texts_;
@@ -48,4 +50,7 @@ protected:
     void paintEvent(QPaintEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+
+    QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
+    void inputMethodEvent(QInputMethodEvent* event) override;
 };
