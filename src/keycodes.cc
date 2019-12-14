@@ -44,7 +44,7 @@ std::string term_keycode_translate(QKeyEvent* event) {
         SPECIAL_KEY(PageDown, PageDown);
 
     default:
-        if (std::isprint(event->key())) {
+        if (event->key() < 0xff && std::isprint(event->key())) {
             if (event->modifiers() & Qt::ShiftModifier)
                 key_name.push_back(std::toupper(char(event->key())));
             else
