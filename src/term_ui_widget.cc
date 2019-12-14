@@ -203,6 +203,8 @@ void TermUIWidget::resizeEvent(QResizeEvent* event) {
 void TermUIWidget::keyPressEvent(QKeyEvent* event) {
     std::string vim_keycodes = term_keycode_translate(event);
     qDebug() << "keyPressEvent" << event->key() << event->text() << event->modifiers() << vim_keycodes.size() << vim_keycodes.c_str();
-    if (!vim_keycodes.empty())
+    if (!vim_keycodes.empty()) {
         emit keyPressed(std::move(vim_keycodes));
+        event->setAccepted(true);
+    }
 }
