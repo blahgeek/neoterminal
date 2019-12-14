@@ -94,6 +94,22 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
     QPainter painter(this);
     painter.setFont(font_);
 
+    auto const& default_highlight = state_->highlight(0);
+
+    // always draw areas outside grid
+    {
+        auto color = default_highlight.reverse ?
+            default_highlight.effective_foreground() :
+            default_highlight.effective_background();
+        painter.fillRect(0, 0, this->width(), grid_offset_.y(), color);
+        painter.fillRect(0, 0, grid_offset_.x(), this->height(), color);
+
+        double right = grid_offset_.x() + grid_size_.width() * cell_size_.width();
+        double bottom = grid_offset_.y() + grid_size_.height() * cell_size_.height();
+        painter.fillRect(right, 0, this->width() - right, this->height(), color);
+        painter.fillRect(0, bottom, this->width(), this->height() - bottom, color);
+    }
+
     int text_draw_cnt = 0, text_draw_noncached_cnt = 0;
 
     QSize term_size = state_->size();
@@ -194,10 +210,9 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
     }
 
     if (!im_preedit_text_.isEmpty()) {
-        auto const& highlight = state_->highlight(0);
-        QPen pen(highlight.reverse ?
-                 highlight.effective_background() :
-                 highlight.effective_foreground());
+        QPen pen(default_highlight.reverse ?
+                 default_highlight.effective_background() :
+                 default_highlight.effective_foreground());
         auto cursor = state_->cursor();
         QPointF pt_lefttop(grid_offset_.x() + cursor.x() * cell_size_.width(),
                            grid_offset_.y() + cursor.y() * cell_size_.height());
