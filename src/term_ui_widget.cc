@@ -90,6 +90,8 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
     QPainter painter(this);
     painter.setFont(font_);
 
+    int text_draw_cnt = 0, text_draw_noncached_cnt = 0;
+
     QSize term_size = state_->size();
     for (int y = 0 ; y < term_size.height() ; y += 1) {
         for (int x = 0 ; x < term_size.width() ;) {
@@ -159,10 +161,13 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
                 QStaticText *static_text = static_texts_.object(static_text_key);
                 if (!static_text) {
                     static_text = new QStaticText(cell.contiguous_text);
+                    static_text->setPerformanceHint(QStaticText::AggressiveCaching);
                     static_text->setTextFormat(Qt::PlainText);
-                    static_text->prepare(QTransform(), font_);
+                    static_text->prepare(QTransform(), font);
                     static_texts_.insert(static_text_key, static_text);
+                    text_draw_noncached_cnt += 1;
                 }
+                text_draw_cnt += 1;
 
                 painter.setFont(font);
                 // painter.drawText(pt_lefttop + QPointF(0, font_metrics_.ascent()),
@@ -187,7 +192,8 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
     // this->paintDebugGrid(event, &painter);
 
     auto t1 = std::chrono::steady_clock::now();
-    qDebug() << "paintEvent costs" << std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count() << "us";
+    qDebug() << "paintEvent costs" << std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count() << "us"
+        << redraw_region.boundingRect() << text_draw_noncached_cnt << text_draw_cnt;
 }
 
 void TermUIWidget::resizeEvent(QResizeEvent* event) {
@@ -196,7 +202,7 @@ void TermUIWidget::resizeEvent(QResizeEvent* event) {
 
 void TermUIWidget::keyPressEvent(QKeyEvent* event) {
     std::string vim_keycodes = term_keycode_translate(event);
-    qDebug() << "keyPressEvent" << event->key() << event->text() << event->modifiers() << vim_keycodes.c_str();
+    qDebug() << "keyPressEvent" << event->key() << event->text() << event->modifiers() << vim_keycodes.size() << vim_keycodes.c_str();
     if (!vim_keycodes.empty())
         emit keyPressed(std::move(vim_keycodes));
 }
