@@ -6,8 +6,8 @@
 #include <memory>
 #include <iostream>
 
-#include "./term_controller.h"
-#include "./term_ui_widget.h"
+#include "./nvim_controller.h"
+#include "./nvim_ui_widget.h"
 
 int main(int argc, char* argv[]) {
 
@@ -20,10 +20,10 @@ int main(int argc, char* argv[]) {
     QTcpSocket* socket = new QTcpSocket();
     socket->connectToHost(argv[1], atoi(argv[2]));
 
-    TermController term((std::unique_ptr<QIODevice>(socket)));
-    term.term_ui_widget()->setFont(QFont("Fira Code", 11));
-    term.term_ui_widget()->show();
-    term.term_ui_widget()->setFocus();
+    NvimController nvim((std::unique_ptr<QIODevice>(socket)));
+    nvim.ui_widget()->setFont(QFont("Fira Code", 11));
+    nvim.ui_widget()->show();
+    nvim.ui_widget()->setFocus();
 
     return app.exec();
 }

@@ -9,24 +9,24 @@
 #include <memory>
 
 class MsgpackRpc;
-class TermUIWidget;
-class TermUIState;
+class NvimUIWidget;
+class NvimUIState;
 
-class TermController: public QObject {
+class NvimController: public QObject {
     Q_OBJECT;
 
 private:
 
     std::unique_ptr<MsgpackRpc> rpc_;
-    std::unique_ptr<TermUIState> ui_state_;
-    std::unique_ptr<TermUIWidget> ui_widget_;
+    std::unique_ptr<NvimUIState> ui_state_;
+    std::unique_ptr<NvimUIWidget> ui_widget_;
 
     bool attached_ = false;
 
 public:
-    TermUIWidget* term_ui_widget() { return ui_widget_.get(); }
+    NvimUIWidget* ui_widget() { return ui_widget_.get(); }
 
-    TermController(std::unique_ptr<QIODevice> io);
+    NvimController(std::unique_ptr<QIODevice> io);
 
 private slots:
     void send_attach_or_resize();

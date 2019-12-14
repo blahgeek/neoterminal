@@ -7,9 +7,9 @@
 #include <QFontMetricsF>
 
 #include "./msgpack_rpc.h"
-#include "./term_ui_state.h"
+#include "./nvim_ui_state.h"
 
-class TermUIWidget : public QWidget {
+class NvimUIWidget : public QWidget {
     Q_OBJECT;
 
 private:
@@ -22,7 +22,7 @@ private:
 
     QString im_preedit_text_;
 
-    TermUIState* state_; // not owned
+    NvimUIState* state_; // not owned
 
     QCache<QPair<uint32_t, QString>, QStaticText> static_texts_;
 
@@ -40,7 +40,7 @@ private:
     void paintDebugGrid(QPaintEvent* event, QPainter* painter);
 
 public:
-    TermUIWidget(TermUIState* state,
+    NvimUIWidget(NvimUIState* state,
                  QWidget* parent=nullptr);
 
     void setFont(QFont const& font);

@@ -3,4 +3,4 @@
 #include <QKeyEvent>
 #include <string>
 
-std::string term_keycode_translate(QKeyEvent* event);
+std::string nvim_keycode_translate(QKeyEvent* event);

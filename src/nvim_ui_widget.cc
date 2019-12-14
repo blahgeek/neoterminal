@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-#include "./term_ui_widget.h"
+#include "./nvim_ui_widget.h"
 #include "./keycodes.h"
 
 
@@ -15,7 +15,7 @@
 #define STATIC_TEXTS_CACHE_SIZE 4096
 
 
-TermUIWidget::TermUIWidget(TermUIState* state, QWidget* parent):
+NvimUIWidget::NvimUIWidget(NvimUIState* state, QWidget* parent):
 QWidget(parent),
 font_metrics_(QFont(), this), state_(state),
 static_texts_(STATIC_TEXTS_CACHE_SIZE) {
@@ -25,7 +25,7 @@ static_texts_(STATIC_TEXTS_CACHE_SIZE) {
     this->calculateGrid();
 }
 
-void TermUIWidget::calculateGrid() {
+void NvimUIWidget::calculateGrid() {
     double cell_height = font_metrics_.lineSpacing();
     double cell_width = font_metrics_.width(ASCII_STRING) / strlen(ASCII_STRING);
 
@@ -45,7 +45,7 @@ void TermUIWidget::calculateGrid() {
     emit gridSizeChanged();
 }
 
-void TermUIWidget::setFont(QFont const& font) {
+void NvimUIWidget::setFont(QFont const& font) {
     font_ = font;
     font_metrics_ = QFontMetrics(font, this);
 
@@ -55,7 +55,7 @@ void TermUIWidget::setFont(QFont const& font) {
     this->update();
 }
 
-void TermUIWidget::redrawCells(QRegion dirty_cells) {
+void NvimUIWidget::redrawCells(QRegion dirty_cells) {
     QRegion dirty_pixels;
     for (auto const& rect: dirty_cells) {
         double left = grid_offset_.x() + rect.left() * cell_size_.width();
@@ -69,7 +69,7 @@ void TermUIWidget::redrawCells(QRegion dirty_cells) {
 }
 
 
-void TermUIWidget::paintDebugGrid(QPaintEvent* event, QPainter* painter) {
+void NvimUIWidget::paintDebugGrid(QPaintEvent* event, QPainter* painter) {
     painter->setPen(Qt::red);
 
     // horizontal
@@ -87,7 +87,7 @@ void TermUIWidget::paintDebugGrid(QPaintEvent* event, QPainter* painter) {
     }
 }
 
-void TermUIWidget::paintEvent(QPaintEvent* event) {
+void NvimUIWidget::paintEvent(QPaintEvent* event) {
     auto redraw_region = event->region();
     auto t0 = std::chrono::steady_clock::now();
 
@@ -112,9 +112,9 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
 
     int text_draw_cnt = 0, text_draw_noncached_cnt = 0;
 
-    QSize term_size = state_->size();
-    for (int y = 0 ; y < term_size.height() ; y += 1) {
-        for (int x = 0 ; x < term_size.width() ;) {
+    QSize nvim_size = state_->size();
+    for (int y = 0 ; y < nvim_size.height() ; y += 1) {
+        for (int x = 0 ; x < nvim_size.width() ;) {
             auto const& cell = state_->cell_at(x, y);
             QPointF pt_lefttop(grid_offset_.x() + x * cell_size_.width(),
                                grid_offset_.y() + y * cell_size_.height());
@@ -232,12 +232,12 @@ void TermUIWidget::paintEvent(QPaintEvent* event) {
         << redraw_region.boundingRect() << text_draw_noncached_cnt << text_draw_cnt;
 }
 
-void TermUIWidget::resizeEvent(QResizeEvent* event) {
+void NvimUIWidget::resizeEvent(QResizeEvent* event) {
     this->calculateGrid();
 }
 
-void TermUIWidget::keyPressEvent(QKeyEvent* event) {
-    std::string vim_keycodes = term_keycode_translate(event);
+void NvimUIWidget::keyPressEvent(QKeyEvent* event) {
+    std::string vim_keycodes = nvim_keycode_translate(event);
     qDebug() << "keyPressEvent" << event->key() << event->text() << event->modifiers() << vim_keycodes.size() << vim_keycodes.c_str();
     if (!vim_keycodes.empty()) {
         emit keyPressed(std::move(vim_keycodes));
@@ -245,7 +245,7 @@ void TermUIWidget::keyPressEvent(QKeyEvent* event) {
     }
 }
 
-QVariant TermUIWidget::inputMethodQuery(Qt::InputMethodQuery query) const {
+QVariant NvimUIWidget::inputMethodQuery(Qt::InputMethodQuery query) const {
     QPoint cursor = state_->cursor();
 
     switch (query) {
@@ -267,7 +267,7 @@ QVariant TermUIWidget::inputMethodQuery(Qt::InputMethodQuery query) const {
     return QVariant();
 }
 
-void TermUIWidget::inputMethodEvent(QInputMethodEvent* event) {
+void NvimUIWidget::inputMethodEvent(QInputMethodEvent* event) {
     qDebug() << "inputMethodEvent"
         << event->preeditString() << event->commitString()
         << event->replacementLength() << event->replacementStart();

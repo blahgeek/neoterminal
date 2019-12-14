@@ -20,14 +20,14 @@ struct convert<QColor> {
 
 }
 
-class TermUIState : public QObject {
+class NvimUIState : public QObject {
     Q_OBJECT;
 
 public:
     using highlight_id_t = int;
 
     struct Highlight {
-        TermUIState* term_ui_;  // for default_*_
+        NvimUIState* nvim_ui_;  // for default_*_
 
         QColor foreground, background, special;
         bool reverse = false,
@@ -103,7 +103,7 @@ public:
     Modeinfo const& modeinfo() const;
 
 public:
-    TermUIState();
+    NvimUIState();
 
     void redraw(msgpack::object const& params);
 

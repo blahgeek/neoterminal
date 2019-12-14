@@ -1,36 +1,36 @@
 #include <QVBoxLayout>
 #include <QDebug>
 
-#include "./term_controller.h"
+#include "./nvim_controller.h"
 #include "./msgpack_rpc.h"
-#include "./term_ui_state.h"
-#include "./term_ui_widget.h"
+#include "./nvim_ui_state.h"
+#include "./nvim_ui_widget.h"
 
 
-TermController::TermController(std::unique_ptr<QIODevice> io) {
+NvimController::NvimController(std::unique_ptr<QIODevice> io) {
     rpc_.reset(new MsgpackRpc(std::move(io)));
-    ui_state_.reset(new TermUIState);
-    ui_widget_.reset(new TermUIWidget(ui_state_.get()));
+    ui_state_.reset(new NvimUIState);
+    ui_widget_.reset(new NvimUIWidget(ui_state_.get()));
 
     QObject::connect(rpc_.get(), &MsgpackRpc::on_notification,
                      [this](std::string const& method, msgpack::object const& params) {
                          if (method == "redraw")
                              ui_state_->redraw(params);
                      });
-    QObject::connect(ui_widget_.get(), &TermUIWidget::keyPressed,
+    QObject::connect(ui_widget_.get(), &NvimUIWidget::keyPressed,
                      [this](std::string const& vim_keycodes) {
                          rpc_->call("nvim_input", vim_keycodes);
                      });
 
-    QObject::connect(ui_widget_.get(), &TermUIWidget::gridSizeChanged,
-                     this, &TermController::send_attach_or_resize);
-    QObject::connect(ui_state_.get(), &TermUIState::updated,
-                     ui_widget_.get(), &TermUIWidget::redrawCells);
-    QObject::connect(ui_state_.get(), &TermUIState::fontChangeRequested,
-                     ui_widget_.get(), &TermUIWidget::setFont);
+    QObject::connect(ui_widget_.get(), &NvimUIWidget::gridSizeChanged,
+                     this, &NvimController::send_attach_or_resize);
+    QObject::connect(ui_state_.get(), &NvimUIState::updated,
+                     ui_widget_.get(), &NvimUIWidget::redrawCells);
+    QObject::connect(ui_state_.get(), &NvimUIState::fontChangeRequested,
+                     ui_widget_.get(), &NvimUIWidget::setFont);
 }
 
-void TermController::send_attach_or_resize() {
+void NvimController::send_attach_or_resize() {
     QSize grid_size = ui_widget_->grid_size();
 
     qDebug() << "Grid size" << grid_size;

@@ -1,6 +1,6 @@
 #include "./keycodes.h"
 
-std::string term_keycode_translate(QKeyEvent* event) {
+std::string nvim_keycode_translate(QKeyEvent* event) {
 
     std::string key_name;
     bool is_special = false;  // needs "<>"

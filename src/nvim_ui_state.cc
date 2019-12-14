@@ -1,4 +1,4 @@
-#include "./term_ui_state.h"
+#include "./nvim_ui_state.h"
 
 #include <QDebug>
 #include <QFont>
@@ -16,13 +16,13 @@ namespace {
     // haha.. magic!
 
     template <typename T>
-    struct termui_handle_helper;
+    struct nvim_ui_handle_helper;
 
     template <typename... Args>
-    struct termui_handle_helper<void(TermUIState::*)(Args...)> {
+    struct nvim_ui_handle_helper<void(NvimUIState::*)(Args...)> {
         static const size_t nargs = sizeof...(Args);
 
-        using fn_t = void(TermUIState::*)(Args...);
+        using fn_t = void(NvimUIState::*)(Args...);
 
         template <size_t I>
         struct arg_t {
@@ -38,13 +38,13 @@ namespace {
         }
 
         template <size_t... Ids>
-        static decltype(auto) call_internal(TermUIState* termui, fn_t fn, msgpack::object_array const& array,
+        static decltype(auto) call_internal(NvimUIState* nvimui, fn_t fn, msgpack::object_array const& array,
                                             std::index_sequence<Ids...>) {
-            return (termui->*fn)(arg<Ids>(array)...);
+            return (nvimui->*fn)(arg<Ids>(array)...);
         }
 
-        static decltype(auto) call(TermUIState* termui, fn_t fn, msgpack::object_array const& array) {
-            return call_internal(termui, fn, array,
+        static decltype(auto) call(NvimUIState* nvimui, fn_t fn, msgpack::object_array const& array) {
+            return call_internal(nvimui, fn, array,
                                  std::index_sequence_for<Args...>());
         }
     };
@@ -64,17 +64,17 @@ msgpack::object const& msgpack::adaptor::convert<QColor>::operator()(msgpack::ob
     return obj;
 }
 
-void TermUIState::Cell::reset() {
+void NvimUIState::Cell::reset() {
     this->text.clear();
     this->highlight_id = 0;
     this->contiguous_cols = 0;
 }
 
-bool TermUIState::Cell::is_whitespace() const {
+bool NvimUIState::Cell::is_whitespace() const {
     return this->text == " ";
 }
 
-bool TermUIState::Cell::is_empty() const {
+bool NvimUIState::Cell::is_empty() const {
     return this->text.empty();
 }
 
@@ -82,34 +82,34 @@ namespace {
     QColor INVALID_COLOR;
 }
 
-QColor const& TermUIState::Highlight::effective_foreground() const {
-    return foreground.isValid() ? foreground : term_ui_ ? term_ui_->default_foreground_ : INVALID_COLOR;
+QColor const& NvimUIState::Highlight::effective_foreground() const {
+    return foreground.isValid() ? foreground : nvim_ui_ ? nvim_ui_->default_foreground_ : INVALID_COLOR;
 }
 
-QColor const& TermUIState::Highlight::effective_background() const {
-    return background.isValid() ? background : term_ui_ ? term_ui_->default_background_ : INVALID_COLOR;
+QColor const& NvimUIState::Highlight::effective_background() const {
+    return background.isValid() ? background : nvim_ui_ ? nvim_ui_->default_background_ : INVALID_COLOR;
 }
 
-QColor const& TermUIState::Highlight::effective_special() const {
-    return special.isValid() ? special : term_ui_ ? term_ui_->default_special_ : INVALID_COLOR;
+QColor const& NvimUIState::Highlight::effective_special() const {
+    return special.isValid() ? special : nvim_ui_ ? nvim_ui_->default_special_ : INVALID_COLOR;
 }
 
-TermUIState::TermUIState() {
-    default_highlight_.term_ui_ = this;
+NvimUIState::NvimUIState() {
+    default_highlight_.nvim_ui_ = this;
 }
 
-TermUIState::Highlight const& TermUIState::highlight(highlight_id_t id) const {
+NvimUIState::Highlight const& NvimUIState::highlight(highlight_id_t id) const {
     auto it = highlights_.find(id);
     if (it != highlights_.end())
         return it->second;
     return default_highlight_;
 }
 
-TermUIState::Modeinfo const& TermUIState::modeinfo() const {
+NvimUIState::Modeinfo const& NvimUIState::modeinfo() const {
     return (mode_idx_ >= 0 && mode_idx_ < modeinfos_.size()) ? modeinfos_[mode_idx_] : default_modeinfo_;
 }
 
-void TermUIState::redraw(msgpack::object const& params) {
+void NvimUIState::redraw(msgpack::object const& params) {
     assert(params.type == msgpack::type::ARRAY);
 
     auto t0 = std::chrono::steady_clock::now();
@@ -132,8 +132,8 @@ void TermUIState::redraw(msgpack::object const& params) {
         handled = true; \
         for (int j = 1 ; j < objarray.size ; j += 1) { \
             assert(objarray.ptr[j].type == msgpack::type::ARRAY); \
-            termui_handle_helper<decltype(&TermUIState::handle_ ## NAME)>::call( \
-                this, &TermUIState::handle_ ## NAME, objarray.ptr[j].via.array); \
+            nvim_ui_handle_helper<decltype(&NvimUIState::handle_ ## NAME)>::call( \
+                this, &NvimUIState::handle_ ## NAME, objarray.ptr[j].via.array); \
         } \
     } \
 } while (0)
@@ -164,7 +164,7 @@ void TermUIState::redraw(msgpack::object const& params) {
     qDebug() << "Parsing redraw event costs" << std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count() << "us";
 }
 
-void TermUIState::handle_grid_resize(int grid, int width, int height) {
+void NvimUIState::handle_grid_resize(int grid, int width, int height) {
     assert(grid == 1);
 
     qDebug() << "handle_grid_resize" << width << height;
@@ -182,7 +182,7 @@ void TermUIState::handle_grid_resize(int grid, int width, int height) {
     dirty_cells_ |= QRect(0, 0, width, height);
 }
 
-void TermUIState::handle_default_colors_set(QColor const& fg,
+void NvimUIState::handle_default_colors_set(QColor const& fg,
                                             QColor const& bg,
                                             QColor const& sp) {
     qDebug() << "handle_default_colors_set" << fg << bg << sp;
@@ -194,14 +194,14 @@ void TermUIState::handle_default_colors_set(QColor const& fg,
     dirty_cells_ |= QRect(0, 0, width_, height_);
 }
 
-void TermUIState::handle_hl_attr_define(highlight_id_t id, Highlight attr) {
+void NvimUIState::handle_hl_attr_define(highlight_id_t id, Highlight attr) {
     qDebug() << "handle_hl_attr_define" << id;
 
-    attr.term_ui_ = this;
+    attr.nvim_ui_ = this;
     highlights_[id] = attr;
 }
 
-void TermUIState::handle_grid_line(int grid, int row, int col_start, msgpack::object const& data) {
+void NvimUIState::handle_grid_line(int grid, int row, int col_start, msgpack::object const& data) {
     assert(grid == 1);
     assert(row >= 0 && row < height_);
     assert(col_start >= 0 && col_start < width_);
@@ -247,7 +247,7 @@ void TermUIState::handle_grid_line(int grid, int row, int col_start, msgpack::ob
     this->refresh_contiguous_text(row, col_start, col);
 }
 
-void TermUIState::refresh_contiguous_text(int row, int start, int end) {
+void NvimUIState::refresh_contiguous_text(int row, int start, int end) {
     assert(end >= start);
     assert(row >= 0 && row < height_);
     auto& cells_row = this->cells_[row];
@@ -303,7 +303,7 @@ void TermUIState::refresh_contiguous_text(int row, int start, int end) {
     }
 }
 
-void TermUIState::handle_grid_clear(int grid) {
+void NvimUIState::handle_grid_clear(int grid) {
     assert(grid == 1);
 
     qDebug() << "handle_grid_clear";
@@ -315,7 +315,7 @@ void TermUIState::handle_grid_clear(int grid) {
     dirty_cells_ |= QRect(0, 0, width_, height_);
 }
 
-void TermUIState::handle_grid_scroll(int grid, int top, int bot, int left, int right, int rows, int cols) {
+void NvimUIState::handle_grid_scroll(int grid, int top, int bot, int left, int right, int rows, int cols) {
     assert(grid == 1);
     assert(cols == 0);
     assert(rows != 0);
@@ -360,7 +360,7 @@ void TermUIState::handle_grid_scroll(int grid, int top, int bot, int left, int r
     }
 }
 
-void TermUIState::handle_flush() {
+void NvimUIState::handle_flush() {
     qDebug() << "handle_flush";
 
     emit updated(dirty_cells_);
@@ -368,7 +368,7 @@ void TermUIState::handle_flush() {
 }
 
 
-void TermUIState::handle_mode_info_set(bool cursor_style_enabled,
+void NvimUIState::handle_mode_info_set(bool cursor_style_enabled,
                                        std::vector<Modeinfo> mode_infos) {
     qDebug() << "handle_mode_info_set";
 
@@ -380,7 +380,7 @@ void TermUIState::handle_mode_info_set(bool cursor_style_enabled,
     this->refresh_cursor(cursor_);
 }
 
-void TermUIState::handle_mode_change(std::string const& mode, int mode_idx) {
+void NvimUIState::handle_mode_change(std::string const& mode, int mode_idx) {
     qDebug() << "handle_mode_change" << mode.c_str() << mode_idx;
 
     mode_ = mode;
@@ -389,7 +389,7 @@ void TermUIState::handle_mode_change(std::string const& mode, int mode_idx) {
     this->refresh_cursor(cursor_);
 }
 
-void TermUIState::handle_grid_cursor_goto(int grid, int row, int col) {
+void NvimUIState::handle_grid_cursor_goto(int grid, int row, int col) {
     assert(grid == 1);
     qDebug() << "handle_grid_cursor_goto" << row << col;
 
@@ -399,21 +399,21 @@ void TermUIState::handle_grid_cursor_goto(int grid, int row, int col) {
         this->refresh_cursor(QPoint(col, row));
 }
 
-void TermUIState::handle_busy_start() {
+void NvimUIState::handle_busy_start() {
     qDebug() << "handle_busy_start";
 
     cursor_saved_on_busy_ = cursor_;
     this->refresh_cursor(QPoint(-1, -1));
 }
 
-void TermUIState::handle_busy_stop() {
+void NvimUIState::handle_busy_stop() {
     qDebug() << "handle_busy_stop" << cursor_saved_on_busy_;
 
     this->refresh_cursor(cursor_saved_on_busy_);
     cursor_saved_on_busy_ = QPoint(-1, -1);
 }
 
-void TermUIState::refresh_cursor(QPoint new_pos) {
+void NvimUIState::refresh_cursor(QPoint new_pos) {
     QPoint old_pos = cursor_;
     cursor_ = new_pos;
 
@@ -428,7 +428,7 @@ namespace {
     const QRegularExpression FONT_REGEX("^([\\w\\s]+),?(\\d*)$");
 }
 
-void TermUIState::handle_option_set(std::string const& name, msgpack::object const& value) {
+void NvimUIState::handle_option_set(std::string const& name, msgpack::object const& value) {
     qDebug() << "handle_option_set" << name.c_str();
 
     if (name == "guifont" && value.type == msgpack::type::STR) {

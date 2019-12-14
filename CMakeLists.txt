@@ -8,9 +8,9 @@ set(CMAKE_AUTOMOC ON)
 find_package(Qt5 COMPONENTS Widgets Network REQUIRED)
 
 add_executable(main
-    ./src/term_controller.cc
-    ./src/term_ui_state.cc
-    ./src/term_ui_widget.cc
+    ./src/nvim_controller.cc
+    ./src/nvim_ui_state.cc
+    ./src/nvim_ui_widget.cc
     ./src/msgpack_rpc.cc
     ./src/keycodes.cc
     ./src/main.cc
