@@ -13,6 +13,7 @@ add_executable(main
     ./src/nvim_ui_widget.cc
     ./src/msgpack_rpc.cc
     ./src/keycodes.cc
+    ./src/application.cc
     ./src/main.cc
     )
 

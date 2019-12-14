@@ -24,6 +24,8 @@ iodevice_(std::move(iodevice)) {
 
     connect(iodevice_.get(), &QIODevice::readyRead,
             this, &MsgpackRpc::do_read);
+    connect(iodevice_.get(), &QIODevice::aboutToClose,
+            this, &MsgpackRpc::on_close);
 }
 
 bool MsgpackRpc::is_open() {

@@ -30,6 +30,7 @@ public:
 
 signals:
     void on_notification(std::string const& method, msgpack::object const& params);
+    void on_close();
 
 private:
     std::unique_ptr<QIODevice> iodevice_;

@@ -17,6 +17,9 @@ NvimController::NvimController(std::unique_ptr<QIODevice> io) {
                          if (method == "redraw")
                              ui_state_->redraw(params);
                      });
+    QObject::connect(rpc_.get(), &MsgpackRpc::on_close,
+                     ui_widget_.get(), &QWidget::close);
+
     QObject::connect(ui_widget_.get(), &NvimUIWidget::keyPressed,
                      [this](std::string const& vim_keycodes) {
                          rpc_->call("nvim_input", vim_keycodes);
