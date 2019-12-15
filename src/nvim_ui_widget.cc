@@ -3,6 +3,8 @@
 #include <QPen>
 #include <QPaintEvent>
 #include <QKeyEvent>
+#include <QMouseEvent>
+#include <QWheelEvent>
 #include <QCursor>
 
 #include <cmath>
@@ -282,5 +284,93 @@ void NvimUIWidget::inputMethodEvent(QInputMethodEvent* event) {
     if (!event->commitString().isEmpty())
         emit keyPressed(event->commitString().toStdString());
 
+    event->setAccepted(true);
+}
+
+namespace {
+    std::string get_nvim_modifiers(int mods) {
+        std::string ret;
+        if (mods & Qt::ShiftModifier)
+            ret += "S";
+        if (mods & Qt::ControlModifier)
+            ret += "C";
+        if (mods & Qt::AltModifier)
+            ret += "A";
+        if (mods & Qt::MetaModifier)
+            ret += "M";
+        return ret;
+    }
+}
+
+void NvimUIWidget::processMouseEvent(QMouseEvent* event) {
+    MouseInputParams params;
+    Qt::MouseButton event_btn = Qt::NoButton;
+    switch (event->type()) {
+        case QEvent::MouseButtonPress:
+            params.action = "press";
+            pressed_mouse_btn_ = event->button();
+            event_btn = event->button();
+            break;
+        case QEvent::MouseButtonRelease:
+            params.action = "release";
+            pressed_mouse_btn_ = Qt::NoButton;
+            event_btn = event->button();
+            break;
+        case QEvent::MouseMove:
+            params.action = "drag";
+            event_btn = pressed_mouse_btn_;
+            break;
+        default:
+            return;
+    }
+    switch (event_btn) {
+        case Qt::LeftButton:
+            params.button = "left";
+            break;
+        case Qt::RightButton:
+            params.button = "right";
+            break;
+        case Qt::MidButton:
+            params.button = "middle";
+            break;
+        default:
+            return;
+    }
+
+    params.modifier = get_nvim_modifiers(event->modifiers());
+    params.col = (event->x() - grid_offset_.x()) / cell_size_.width();
+    params.row = (event->y() - grid_offset_.y()) / cell_size_.height();
+
+    qDebug() << "mouseEvent" << params.button.c_str() << params.action.c_str() << params.modifier.c_str() << params.col << params.row;
+    emit mouseInput(params);
+    event->setAccepted(true);
+}
+
+void NvimUIWidget::mouseMoveEvent(QMouseEvent* event) {
+    this->processMouseEvent(event);
+}
+void NvimUIWidget::mousePressEvent(QMouseEvent* event) {
+    this->processMouseEvent(event);
+}
+void NvimUIWidget::mouseReleaseEvent(QMouseEvent* event) {
+    this->processMouseEvent(event);
+}
+
+void NvimUIWidget::wheelEvent(QWheelEvent* event) {
+    MouseInputParams params;
+    params.button = "wheel";
+    params.modifier = get_nvim_modifiers(event->modifiers());
+    params.col = (event->x() - grid_offset_.x()) / cell_size_.width();
+    params.row = (event->y() - grid_offset_.y()) / cell_size_.height();
+
+    auto delta = event->angleDelta();
+    if (std::abs(delta.x()) > std::abs(delta.y())) {  // horizontal
+        params.action = ((delta.x() > 0) ^ event->inverted()) ? "left" : "right";
+    } else {
+        params.action = ((delta.y() > 0) ^ event->inverted()) ? "up" : "down";
+    }
+
+    qDebug() << "wheelEvent" << params.action.c_str() << params.modifier.c_str() << params.col << params.row;
+    emit mouseInput(params);
     event->setAccepted(true);
 }

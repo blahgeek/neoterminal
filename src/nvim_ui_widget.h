@@ -21,14 +21,24 @@ private:
     QPointF grid_offset_;
 
     QString im_preedit_text_;
+    Qt::MouseButton pressed_mouse_btn_;
 
     NvimUIState* state_; // not owned
 
     QCache<QPair<uint32_t, QString>, QStaticText> static_texts_;
 
+public:
+    struct MouseInputParams {
+        std::string button;
+        std::string action;
+        std::string modifier;
+        int row, col;
+    };
+
 signals:
     void gridSizeChanged();
     void keyPressed(std::string vim_keycodes);
+    void mouseInput(MouseInputParams params);
 
 public slots:
     void redrawCells(QRegion dirty_cells);
@@ -36,6 +46,7 @@ public slots:
 private:
 
     void calculateGrid();
+    void processMouseEvent(QMouseEvent* event);
 
     void paintDebugGrid(QPaintEvent* event, QPainter* painter);
 
@@ -50,6 +61,11 @@ protected:
     void paintEvent(QPaintEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
 
     QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
     void inputMethodEvent(QInputMethodEvent* event) override;

@@ -24,6 +24,12 @@ NvimController::NvimController(std::unique_ptr<QIODevice> io) {
                      [this](std::string const& vim_keycodes) {
                          rpc_->call("nvim_input", vim_keycodes);
                      });
+    QObject::connect(ui_widget_.get(), &NvimUIWidget::mouseInput,
+                     [this](NvimUIWidget::MouseInputParams params) {
+                         rpc_->call("nvim_input_mouse",
+                                    params.button, params.action, params.modifier,
+                                    0, params.row, params.col);
+                     });
 
     QObject::connect(ui_widget_.get(), &NvimUIWidget::gridSizeChanged,
                      this, &NvimController::send_attach_or_resize);
