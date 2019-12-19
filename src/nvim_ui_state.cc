@@ -192,6 +192,7 @@ void NvimUIState::handle_default_colors_set(QColor const& fg,
     default_special_ = sp;
 
     dirty_cells_ |= QRect(0, 0, width_, height_);
+    dirty_defaults_ = true;
 }
 
 void NvimUIState::handle_hl_attr_define(highlight_id_t id, Highlight attr) {
@@ -363,7 +364,12 @@ void NvimUIState::handle_grid_scroll(int grid, int top, int bot, int left, int r
 void NvimUIState::handle_flush() {
     qDebug() << "handle_flush";
 
-    emit updated(dirty_cells_);
+    if (dirty_defaults_) {
+        emit defaultsUpdated();
+        dirty_defaults_ = false;
+    }
+
+    emit cellsUpdated(dirty_cells_);
     dirty_cells_ = QRegion(0, 0, 0, 0);
 }
 

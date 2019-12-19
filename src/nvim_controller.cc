@@ -27,8 +27,10 @@ NvimController::NvimController(std::unique_ptr<QIODevice> io) {
 
     QObject::connect(ui_widget_.get(), &NvimUIWidget::gridSizeChanged,
                      this, &NvimController::send_attach_or_resize);
-    QObject::connect(ui_state_.get(), &NvimUIState::updated,
+    QObject::connect(ui_state_.get(), &NvimUIState::cellsUpdated,
                      ui_widget_.get(), &NvimUIWidget::redrawCells);
+    QObject::connect(ui_state_.get(), SIGNAL(defaultsUpdated()),
+                     ui_widget_.get(), SLOT(update()));
     QObject::connect(ui_state_.get(), &NvimUIState::fontChangeRequested,
                      ui_widget_.get(), &NvimUIWidget::setFont);
 }
