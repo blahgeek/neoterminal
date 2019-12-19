@@ -1,6 +1,4 @@
-#include <QApplication>
-#include <QMainWindow>
-#include <QTcpSocket>
+#include <QtGlobal>
 
 #include <chrono>
 #include <memory>
