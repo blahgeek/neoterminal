@@ -5,6 +5,8 @@ project(neoterminal)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
+
 set(QT_COMPONENTS Widgets Network)
 foreach(I ${QT_COMPONENTS})
     set(QT_LIBRARIES ${QT_LIBRARIES} Qt5::${I})
