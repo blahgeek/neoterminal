@@ -139,7 +139,7 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
                 auto const& modeinfo = state_->modeinfo();
                 // TODO: modeinfo.attr_id seems useless now, we just use reversed color for now
                 if (modeinfo.cursor_shape == "block")
-                    reverse_color = true;
+                    reverse_color = !reverse_color;
                 if (modeinfo.cursor_shape == "horizontal")
                     draw_horizontal_cursor = true;
                 if (modeinfo.cursor_shape == "vertical")
