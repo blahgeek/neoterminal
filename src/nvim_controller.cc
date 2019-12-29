@@ -1,6 +1,8 @@
 #include <QVBoxLayout>
 #include <QDebug>
 
+#include <iostream>
+
 #include "./nvim_controller.h"
 #include "./msgpack_rpc.h"
 #include "./nvim_ui_state.h"
@@ -46,6 +48,12 @@ void NvimController::send_attach_or_resize() {
         rpc_->call("nvim_ui_attach",
                    grid_size.width(), grid_size.height(),
                    std::map<std::string, bool>({{"ext_linegrid", true}}));
+        rpc_->call("nvim_set_client_info",
+                   std::string("neoterminal"),
+                   std::map<std::string, std::string>(),
+                   std::string("ui"),
+                   std::map<std::string, std::string>(),
+                   std::map<std::string, std::string>());
         attached_ = true;
     }
 }
