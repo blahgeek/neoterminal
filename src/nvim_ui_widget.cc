@@ -26,11 +26,19 @@ unsigned int qHash(QColor color) {
 
 
 NvimUIWidget::NvimUIWidget(QWidget* parent):
+#ifdef NVIM_UI_WIDGET_USE_GL
+QOpenGLWidget(parent),
+#else
 QWidget(parent),
+#endif
 font_metrics_(QFont(), this),
 static_texts_(STATIC_TEXTS_CACHE_SIZE),
 cache_pens_(QPEN_CACHE_SIZE) {
     this->setAttribute(Qt::WA_InputMethodEnabled);
+    this->setAttribute(Qt::WA_OpaquePaintEvent);
+#ifdef NVIM_UI_WIDGET_USE_GL
+    this->setUpdateBehavior(PartialUpdate);
+#endif
     this->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
 }
 
@@ -248,10 +256,6 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
     auto t1 = std::chrono::steady_clock::now();
     qDebug() << "paintEvent costs" << std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count() << "us"
         << redraw_region.boundingRect() << text_draw_noncached_cnt << text_draw_cnt;
-}
-
-void NvimUIWidget::resizeEvent(QResizeEvent* event) {
-    this->calculateGrid();
 }
 
 void NvimUIWidget::keyPressEvent(QKeyEvent* event) {

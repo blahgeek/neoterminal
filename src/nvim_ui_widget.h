@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QWidget>
+#include <QOpenGLWidget>
 #include <QFont>
 #include <QCache>
 #include <QStaticText>
@@ -11,7 +12,13 @@
 
 unsigned int qHash(QColor);
 
-class NvimUIWidget : public QWidget {
+class NvimUIWidget :
+#ifdef NVIM_UI_WIDGET_USE_GL
+    public QOpenGLWidget
+#else
+    public QWidget
+#endif
+{
     Q_OBJECT;
 
 private:
@@ -62,7 +69,11 @@ public:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
+#ifdef NVIM_UI_WIDGET_USE_GL
+    void resizeGL(int, int) override { this->calculateGrid(); }
+#else
+    void resizeEvent(QResizeEvent*) override { this->calculateGrid(); }
+#endif
     void keyPressEvent(QKeyEvent* event) override;
 
     void mouseMoveEvent(QMouseEvent* event) override;

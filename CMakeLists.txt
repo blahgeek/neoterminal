@@ -14,6 +14,12 @@ endforeach()
 
 find_package(Qt5 COMPONENTS ${QT_COMPONENTS} REQUIRED)
 
+option(NEOTERMINAL_USE_GL "Use OpenGLWidget" OFF)
+
+if (NEOTERMINAL_USE_GL)
+    add_definitions(-DNVIM_UI_WIDGET_USE_GL)
+endif ()
+
 add_library(neoterminal-objs OBJECT
     ./src/nvim_controller.cc
     ./src/nvim_ui_calc.cc
