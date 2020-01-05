@@ -14,11 +14,10 @@ NvimController::NvimController(std::unique_ptr<QIODevice> io) {
     ui_calc_.reset(new NvimUICalc);
     ui_widget_.reset(new NvimUIWidget);
 
+    ui_calc_->moveToThread(&ui_calc_thread_);
+
     QObject::connect(rpc_.get(), &MsgpackRpc::on_notification,
-                     [this](std::string const& method, msgpack::object const& params) {
-                         if (method == "redraw")
-                             ui_calc_->redraw(params);
-                     });
+                     this, &NvimController::handle_notification);
     QObject::connect(rpc_.get(), &MsgpackRpc::on_close,
                      ui_widget_.get(), &QWidget::close);
 
@@ -40,6 +39,15 @@ NvimController::NvimController(std::unique_ptr<QIODevice> io) {
                      ui_widget_.get(), &NvimUIWidget::updateState);
     QObject::connect(ui_calc_.get(), &NvimUICalc::fontChangeRequested,
                      ui_widget_.get(), &NvimUIWidget::setFont);
+    QObject::connect(this, &NvimController::on_notification_redraw,
+                     ui_calc_.get(), &NvimUICalc::redraw);
+
+    ui_calc_thread_.start();
+}
+
+NvimController::~NvimController() {
+    ui_calc_thread_.quit();
+    ui_calc_thread_.wait();
 }
 
 void NvimController::send_attach_or_resize() {
@@ -61,4 +69,9 @@ void NvimController::send_attach_or_resize() {
                    std::map<std::string, std::string>());
         attached_ = true;
     }
+}
+
+void NvimController::handle_notification(std::string const& method, msgpack::object const& params) {
+    if (method == "redraw")
+        emit on_notification_redraw(params);
 }
