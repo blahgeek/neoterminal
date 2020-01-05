@@ -83,6 +83,7 @@ private:
 
     std::vector<std::vector<Cell>> cells_;
     QRegion dirty_cells_;
+    bool dirty_defaults_ = false;
 
     int width_ = 0, height_ = 0;
 
@@ -108,7 +109,8 @@ public:
     void redraw(msgpack::object const& params);
 
 signals:
-    void updated(QRegion dirty_cells);
+    void defaultsUpdated();  // should redraw all
+    void cellsUpdated(QRegion dirty_cells);
     void fontChangeRequested(QFont font);
 
 private:

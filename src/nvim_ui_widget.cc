@@ -1,5 +1,6 @@
 #include <QDebug>
 #include <QPainter>
+#include <QFontDatabase>
 #include <QPen>
 #include <QPaintEvent>
 #include <QKeyEvent>
@@ -21,10 +22,8 @@ NvimUIWidget::NvimUIWidget(NvimUIState* state, QWidget* parent):
 QWidget(parent),
 font_metrics_(QFont(), this), state_(state),
 static_texts_(STATIC_TEXTS_CACHE_SIZE) {
-
     this->setAttribute(Qt::WA_InputMethodEnabled);
-
-    this->calculateGrid();
+    this->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
 }
 
 void NvimUIWidget::calculateGrid() {
@@ -51,7 +50,7 @@ void NvimUIWidget::setFont(QFont const& font) {
     font_ = font;
     font_metrics_ = QFontMetrics(font, this);
 
-    qDebug() << "setFont" << font_;
+    qDebug() << "setFont" << font_ << font_metrics_.ascent() << font_metrics_.height() << (font_metrics_.ascent() / font_metrics_.height());
     this->calculateGrid();
     static_texts_.clear();
     this->update();
@@ -103,13 +102,13 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
         auto color = default_highlight.reverse ?
             default_highlight.effective_foreground() :
             default_highlight.effective_background();
-        painter.fillRect(0, 0, this->width(), grid_offset_.y(), color);
-        painter.fillRect(0, 0, grid_offset_.x(), this->height(), color);
+        painter.fillRect(QRectF(0, 0, this->width(), grid_offset_.y()), color);
+        painter.fillRect(QRectF(0, 0, grid_offset_.x(), this->height()), color);
 
         double right = grid_offset_.x() + grid_size_.width() * cell_size_.width();
         double bottom = grid_offset_.y() + grid_size_.height() * cell_size_.height();
-        painter.fillRect(right, 0, this->width() - right, this->height(), color);
-        painter.fillRect(0, bottom, this->width(), this->height() - bottom, color);
+        painter.fillRect(QRectF(right, 0, this->width() - right, this->height()), color);
+        painter.fillRect(QRectF(0, bottom, this->width(), this->height() - bottom), color);
     }
 
     int text_draw_cnt = 0, text_draw_noncached_cnt = 0;
@@ -142,7 +141,7 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
                 auto const& modeinfo = state_->modeinfo();
                 // TODO: modeinfo.attr_id seems useless now, we just use reversed color for now
                 if (modeinfo.cursor_shape == "block")
-                    reverse_color = true;
+                    reverse_color = !reverse_color;
                 if (modeinfo.cursor_shape == "horizontal")
                     draw_horizontal_cursor = true;
                 if (modeinfo.cursor_shape == "vertical")
@@ -196,7 +195,8 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
                 //                  cell.contiguous_text);
                 painter.drawStaticText(
                         QPointF(pt_lefttop.x(),
-                                pt_lefttop.y() - (static_text->size().height() - cell_size_.height()) * 4 / 5),  // align baseline for fallback font (80% of height)
+                                pt_lefttop.y() + font_metrics_.lineSpacing() - font_metrics_.height()
+                                    - (static_text->size().height() - cell_size_.height()) * font_metrics_.ascent() / font_metrics_.height()),  // align baseline for fallback font
                         *static_text);
 
                 if (highlight.underline || highlight.undercurl) // TODO: curl?
