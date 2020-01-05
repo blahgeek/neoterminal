@@ -13,15 +13,23 @@
 #include "./nvim_ui_widget.h"
 #include "./keycodes.h"
 
+unsigned int qHash(QColor color) {
+    int r, g, b;
+    color.getRgb(&r, &g, &b);
+    return qHash(r) ^ qHash(g) ^ qHash(b);
+}
+
 
 #define ASCII_STRING " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 #define STATIC_TEXTS_CACHE_SIZE 4096
+#define QPEN_CACHE_SIZE 4096
 
 
 NvimUIWidget::NvimUIWidget(QWidget* parent):
 QWidget(parent),
 font_metrics_(QFont(), this),
-static_texts_(STATIC_TEXTS_CACHE_SIZE) {
+static_texts_(STATIC_TEXTS_CACHE_SIZE),
+cache_pens_(QPEN_CACHE_SIZE) {
     this->setAttribute(Qt::WA_InputMethodEnabled);
     this->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
 }
@@ -160,8 +168,13 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
             painter.fillRect(affected_rect,
                              reverse_color ?  highlight_fg : highlight_bg);
 
-            QPen pen(reverse_color ?  highlight_bg : highlight_fg);
-            painter.setPen(pen);
+            QColor const& pen_color = reverse_color ?  highlight_bg : highlight_fg;
+            QPen* pen = cache_pens_.object(pen_color);
+            if (!pen) {
+                pen = new QPen(pen_color);
+                cache_pens_.insert(pen_color, pen);
+            }
+            painter.setPen(*pen);
 
             if (draw_horizontal_cursor)
                 painter.drawLine(QLineF(affected_rect.bottomLeft() - QPointF(0, 1),

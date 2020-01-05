@@ -9,6 +9,8 @@
 #include "./msgpack_rpc.h"
 #include "./nvim_ui_state.h"
 
+unsigned int qHash(QColor);
+
 class NvimUIWidget : public QWidget {
     Q_OBJECT;
 
@@ -26,6 +28,7 @@ private:
     std::shared_ptr<NvimUIState> state_;
 
     QCache<QPair<uint32_t, QString>, QStaticText> static_texts_;
+    QCache<QColor, QPen> cache_pens_;
 
 public:
     struct MouseInputParams {
