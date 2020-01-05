@@ -10,7 +10,7 @@
 
 class MsgpackRpc;
 class NvimUIWidget;
-class NvimUIState;
+class NvimUICalc;
 
 class NvimController: public QObject {
     Q_OBJECT;
@@ -18,7 +18,7 @@ class NvimController: public QObject {
 private:
 
     std::unique_ptr<MsgpackRpc> rpc_;
-    std::unique_ptr<NvimUIState> ui_state_;
+    std::unique_ptr<NvimUICalc> ui_calc_;
     std::unique_ptr<NvimUIWidget> ui_widget_;
 
     bool attached_ = false;

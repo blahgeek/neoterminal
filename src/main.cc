@@ -5,6 +5,8 @@
 #include <iostream>
 
 #include "./application.h"
+#include "./nvim_ui_calc.h"
+#include "./nvim_ui_widget.h"
 
 int main(int argc, char* argv[]) {
 

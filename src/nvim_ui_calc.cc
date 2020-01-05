@@ -1,4 +1,4 @@
-#include "./nvim_ui_state.h"
+#include "./nvim_ui_calc.h"
 
 #include <QDebug>
 #include <QFont>
@@ -19,10 +19,10 @@ namespace {
     struct nvim_ui_handle_helper;
 
     template <typename... Args>
-    struct nvim_ui_handle_helper<void(NvimUIState::*)(Args...)> {
+    struct nvim_ui_handle_helper<void(NvimUICalc::*)(Args...)> {
         static const size_t nargs = sizeof...(Args);
 
-        using fn_t = void(NvimUIState::*)(Args...);
+        using fn_t = void(NvimUICalc::*)(Args...);
 
         template <size_t I>
         struct arg_t {
@@ -38,12 +38,12 @@ namespace {
         }
 
         template <size_t... Ids>
-        static decltype(auto) call_internal(NvimUIState* nvimui, fn_t fn, msgpack::object_array const& array,
+        static decltype(auto) call_internal(NvimUICalc* nvimui, fn_t fn, msgpack::object_array const& array,
                                             std::index_sequence<Ids...>) {
             return (nvimui->*fn)(arg<Ids>(array)...);
         }
 
-        static decltype(auto) call(NvimUIState* nvimui, fn_t fn, msgpack::object_array const& array) {
+        static decltype(auto) call(NvimUICalc* nvimui, fn_t fn, msgpack::object_array const& array) {
             return call_internal(nvimui, fn, array,
                                  std::index_sequence_for<Args...>());
         }
@@ -64,52 +64,23 @@ msgpack::object const& msgpack::adaptor::convert<QColor>::operator()(msgpack::ob
     return obj;
 }
 
-void NvimUIState::Cell::reset() {
+void NvimUICalc::InternalCell::reset() {
     this->text.clear();
     this->highlight_id = 0;
     this->contiguous_cols = 0;
 }
 
-bool NvimUIState::Cell::is_whitespace() const {
+bool NvimUICalc::InternalCell::is_whitespace() const {
     return this->text == " ";
 }
 
-bool NvimUIState::Cell::is_empty() const {
+bool NvimUICalc::InternalCell::is_empty() const {
     return this->text.empty();
 }
 
-namespace {
-    QColor INVALID_COLOR;
-}
+NvimUICalc::NvimUICalc() = default;
 
-QColor const& NvimUIState::Highlight::effective_foreground() const {
-    return foreground.isValid() ? foreground : nvim_ui_ ? nvim_ui_->default_foreground_ : INVALID_COLOR;
-}
-
-QColor const& NvimUIState::Highlight::effective_background() const {
-    return background.isValid() ? background : nvim_ui_ ? nvim_ui_->default_background_ : INVALID_COLOR;
-}
-
-QColor const& NvimUIState::Highlight::effective_special() const {
-    return special.isValid() ? special : nvim_ui_ ? nvim_ui_->default_special_ : INVALID_COLOR;
-}
-
-NvimUIState::NvimUIState() {
-    default_highlight_.nvim_ui_ = this;
-}
-
-NvimUIState::Highlight const& NvimUIState::highlight(highlight_id_t id) const {
-    auto it = highlights_.find(id);
-    if (it != highlights_.end())
-        return it->second;
-    return default_highlight_;
-}
-
-NvimUIState::Modeinfo const& NvimUIState::modeinfo() const {
-    return (mode_idx_ >= 0 && mode_idx_ < modeinfos_.size()) ? modeinfos_[mode_idx_] : default_modeinfo_;
-}
-
-void NvimUIState::redraw(msgpack::object const& params) {
+void NvimUICalc::redraw(msgpack::object const& params) {
     assert(params.type == msgpack::type::ARRAY);
 
     auto t0 = std::chrono::steady_clock::now();
@@ -132,8 +103,8 @@ void NvimUIState::redraw(msgpack::object const& params) {
         handled = true; \
         for (int j = 1 ; j < objarray.size ; j += 1) { \
             assert(objarray.ptr[j].type == msgpack::type::ARRAY); \
-            nvim_ui_handle_helper<decltype(&NvimUIState::handle_ ## NAME)>::call( \
-                this, &NvimUIState::handle_ ## NAME, objarray.ptr[j].via.array); \
+            nvim_ui_handle_helper<decltype(&NvimUICalc::handle_ ## NAME)>::call( \
+                this, &NvimUICalc::handle_ ## NAME, objarray.ptr[j].via.array); \
         } \
     } \
 } while (0)
@@ -164,7 +135,7 @@ void NvimUIState::redraw(msgpack::object const& params) {
     qDebug() << "Parsing redraw event costs" << std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count() << "us";
 }
 
-void NvimUIState::handle_grid_resize(int grid, int width, int height) {
+void NvimUICalc::handle_grid_resize(int grid, int width, int height) {
     assert(grid == 1);
 
     qDebug() << "handle_grid_resize" << width << height;
@@ -182,7 +153,7 @@ void NvimUIState::handle_grid_resize(int grid, int width, int height) {
     dirty_cells_ |= QRect(0, 0, width, height);
 }
 
-void NvimUIState::handle_default_colors_set(QColor const& fg,
+void NvimUICalc::handle_default_colors_set(QColor const& fg,
                                             QColor const& bg,
                                             QColor const& sp) {
     qDebug() << "handle_default_colors_set" << fg << bg << sp;
@@ -195,14 +166,13 @@ void NvimUIState::handle_default_colors_set(QColor const& fg,
     dirty_defaults_ = true;
 }
 
-void NvimUIState::handle_hl_attr_define(highlight_id_t id, Highlight attr) {
+void NvimUICalc::handle_hl_attr_define(highlight_id_t id, Highlight attr) {
     qDebug() << "handle_hl_attr_define" << id;
 
-    attr.nvim_ui_ = this;
-    highlights_[id] = attr;
+    highlights_[id] = std::shared_ptr<Highlight>(new Highlight(attr));
 }
 
-void NvimUIState::handle_grid_line(int grid, int row, int col_start, msgpack::object const& data) {
+void NvimUICalc::handle_grid_line(int grid, int row, int col_start, msgpack::object const& data) {
     assert(grid == 1);
     assert(row >= 0 && row < height_);
     assert(col_start >= 0 && col_start < width_);
@@ -237,7 +207,7 @@ void NvimUIState::handle_grid_line(int grid, int row, int col_start, msgpack::ob
         for (int j = 0 ; j < repeat ; j += 1) {
             assert(col < width_);
 
-            Cell& cell = cells_row[col];
+            InternalCell& cell = cells_row[col];
             cell.text = std::string(text.via.str.ptr, text.via.str.size);
             cell.highlight_id = last_highlight_id;
 
@@ -248,7 +218,7 @@ void NvimUIState::handle_grid_line(int grid, int row, int col_start, msgpack::ob
     this->refresh_contiguous_text(row, col_start, col);
 }
 
-void NvimUIState::refresh_contiguous_text(int row, int start, int end) {
+void NvimUICalc::refresh_contiguous_text(int row, int start, int end) {
     assert(end >= start);
     assert(row >= 0 && row < height_);
     auto& cells_row = this->cells_[row];
@@ -304,7 +274,7 @@ void NvimUIState::refresh_contiguous_text(int row, int start, int end) {
     }
 }
 
-void NvimUIState::handle_grid_clear(int grid) {
+void NvimUICalc::handle_grid_clear(int grid) {
     assert(grid == 1);
 
     qDebug() << "handle_grid_clear";
@@ -316,7 +286,7 @@ void NvimUIState::handle_grid_clear(int grid) {
     dirty_cells_ |= QRect(0, 0, width_, height_);
 }
 
-void NvimUIState::handle_grid_scroll(int grid, int top, int bot, int left, int right, int rows, int cols) {
+void NvimUICalc::handle_grid_scroll(int grid, int top, int bot, int left, int right, int rows, int cols) {
     assert(grid == 1);
     assert(cols == 0);
     assert(rows != 0);
@@ -361,20 +331,39 @@ void NvimUIState::handle_grid_scroll(int grid, int top, int bot, int left, int r
     }
 }
 
-void NvimUIState::handle_flush() {
+void NvimUICalc::handle_flush() {
     qDebug() << "handle_flush";
 
-    if (dirty_defaults_) {
-        emit defaultsUpdated();
-        dirty_defaults_ = false;
+    std::shared_ptr<NvimUIState> state(new NvimUIState);
+
+    state->default_background = default_background_;
+    state->default_foreground = default_foreground_;
+    state->default_special = default_special_;
+
+    state->cursor = cursor_;
+    state->size = QSize(width_, height_);
+    state->modeinfo = (mode_idx_ >= 0 && mode_idx_ < modeinfos_.size()) ? modeinfos_[mode_idx_] : Modeinfo();
+
+    state->cells.resize(cells_.size());
+    for (size_t i = 0 ; i < cells_.size() ; i += 1) {
+        state->cells[i].resize(cells_[i].size());
+        for (size_t j = 0 ; j < cells_[i].size() ; j += 1) {
+            state->cells[i][j].contiguous_text = cells_[i][j].contiguous_text;
+            state->cells[i][j].contiguous_cols = cells_[i][j].contiguous_cols;
+            auto it = highlights_.find(cells_[i][j].highlight_id);
+            if (it != highlights_.end())
+                state->cells[i][j].highlight = it->second;
+        }
     }
 
-    emit cellsUpdated(dirty_cells_);
+    emit updated(state, dirty_cells_, dirty_defaults_);
+
     dirty_cells_ = QRegion(0, 0, 0, 0);
+    dirty_defaults_ = false;
 }
 
 
-void NvimUIState::handle_mode_info_set(bool cursor_style_enabled,
+void NvimUICalc::handle_mode_info_set(bool cursor_style_enabled,
                                        std::vector<Modeinfo> mode_infos) {
     qDebug() << "handle_mode_info_set";
 
@@ -386,7 +375,7 @@ void NvimUIState::handle_mode_info_set(bool cursor_style_enabled,
     this->refresh_cursor(cursor_);
 }
 
-void NvimUIState::handle_mode_change(std::string const& mode, int mode_idx) {
+void NvimUICalc::handle_mode_change(std::string const& mode, int mode_idx) {
     qDebug() << "handle_mode_change" << mode.c_str() << mode_idx;
 
     mode_ = mode;
@@ -395,7 +384,7 @@ void NvimUIState::handle_mode_change(std::string const& mode, int mode_idx) {
     this->refresh_cursor(cursor_);
 }
 
-void NvimUIState::handle_grid_cursor_goto(int grid, int row, int col) {
+void NvimUICalc::handle_grid_cursor_goto(int grid, int row, int col) {
     assert(grid == 1);
     qDebug() << "handle_grid_cursor_goto" << row << col;
 
@@ -405,21 +394,21 @@ void NvimUIState::handle_grid_cursor_goto(int grid, int row, int col) {
         this->refresh_cursor(QPoint(col, row));
 }
 
-void NvimUIState::handle_busy_start() {
+void NvimUICalc::handle_busy_start() {
     qDebug() << "handle_busy_start";
 
     cursor_saved_on_busy_ = cursor_;
     this->refresh_cursor(QPoint(-1, -1));
 }
 
-void NvimUIState::handle_busy_stop() {
+void NvimUICalc::handle_busy_stop() {
     qDebug() << "handle_busy_stop" << cursor_saved_on_busy_;
 
     this->refresh_cursor(cursor_saved_on_busy_);
     cursor_saved_on_busy_ = QPoint(-1, -1);
 }
 
-void NvimUIState::refresh_cursor(QPoint new_pos) {
+void NvimUICalc::refresh_cursor(QPoint new_pos) {
     QPoint old_pos = cursor_;
     cursor_ = new_pos;
 
@@ -434,7 +423,7 @@ namespace {
     const QRegularExpression FONT_REGEX("^([\\w\\s]+),?(\\d*)$");
 }
 
-void NvimUIState::handle_option_set(std::string const& name, msgpack::object const& value) {
+void NvimUICalc::handle_option_set(std::string const& name, msgpack::object const& value) {
     qDebug() << "handle_option_set" << name.c_str();
 
     if (name == "guifont" && value.type == msgpack::type::STR) {

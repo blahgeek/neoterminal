@@ -2,6 +2,7 @@
 
 #include "./application.h"
 #include "./nvim_ui_widget.h"
+#include "./nvim_ui_calc.h"
 
 Application::Application(int argc, char* argv[]): QApplication(argc, argv) {
     setAttribute(Qt::AA_MacDontSwapCtrlAndMeta, true);

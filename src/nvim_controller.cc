@@ -5,19 +5,19 @@
 
 #include "./nvim_controller.h"
 #include "./msgpack_rpc.h"
-#include "./nvim_ui_state.h"
+#include "./nvim_ui_calc.h"
 #include "./nvim_ui_widget.h"
 
 
 NvimController::NvimController(std::unique_ptr<QIODevice> io) {
     rpc_.reset(new MsgpackRpc(std::move(io)));
-    ui_state_.reset(new NvimUIState);
-    ui_widget_.reset(new NvimUIWidget(ui_state_.get()));
+    ui_calc_.reset(new NvimUICalc);
+    ui_widget_.reset(new NvimUIWidget);
 
     QObject::connect(rpc_.get(), &MsgpackRpc::on_notification,
                      [this](std::string const& method, msgpack::object const& params) {
                          if (method == "redraw")
-                             ui_state_->redraw(params);
+                             ui_calc_->redraw(params);
                      });
     QObject::connect(rpc_.get(), &MsgpackRpc::on_close,
                      ui_widget_.get(), &QWidget::close);
@@ -35,11 +35,10 @@ NvimController::NvimController(std::unique_ptr<QIODevice> io) {
 
     QObject::connect(ui_widget_.get(), &NvimUIWidget::gridSizeChanged,
                      this, &NvimController::send_attach_or_resize);
-    QObject::connect(ui_state_.get(), &NvimUIState::cellsUpdated,
-                     ui_widget_.get(), &NvimUIWidget::redrawCells);
-    QObject::connect(ui_state_.get(), SIGNAL(defaultsUpdated()),
-                     ui_widget_.get(), SLOT(update()));
-    QObject::connect(ui_state_.get(), &NvimUIState::fontChangeRequested,
+
+    QObject::connect(ui_calc_.get(), &NvimUICalc::updated,
+                     ui_widget_.get(), &NvimUIWidget::updateState);
+    QObject::connect(ui_calc_.get(), &NvimUICalc::fontChangeRequested,
                      ui_widget_.get(), &NvimUIWidget::setFont);
 }
 

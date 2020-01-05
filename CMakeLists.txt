@@ -16,7 +16,7 @@ find_package(Qt5 COMPONENTS ${QT_COMPONENTS} REQUIRED)
 
 add_library(neoterminal-objs OBJECT
     ./src/nvim_controller.cc
-    ./src/nvim_ui_state.cc
+    ./src/nvim_ui_calc.cc
     ./src/nvim_ui_widget.cc
     ./src/msgpack_rpc.cc
     ./src/keycodes.cc

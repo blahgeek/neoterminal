@@ -18,9 +18,9 @@
 #define STATIC_TEXTS_CACHE_SIZE 4096
 
 
-NvimUIWidget::NvimUIWidget(NvimUIState* state, QWidget* parent):
+NvimUIWidget::NvimUIWidget(QWidget* parent):
 QWidget(parent),
-font_metrics_(QFont(), this), state_(state),
+font_metrics_(QFont(), this),
 static_texts_(STATIC_TEXTS_CACHE_SIZE) {
     this->setAttribute(Qt::WA_InputMethodEnabled);
     this->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
@@ -56,7 +56,15 @@ void NvimUIWidget::setFont(QFont const& font) {
     this->update();
 }
 
-void NvimUIWidget::redrawCells(QRegion dirty_cells) {
+void NvimUIWidget::updateState(std::shared_ptr<NvimUIState> state,
+                               QRegion dirty_cells, bool defaults_updated) {
+    state_ = state;
+
+    if (defaults_updated) {
+        this->update();
+        return;
+    }
+
     QRegion dirty_pixels;
     for (auto const& rect: dirty_cells) {
         double left = grid_offset_.x() + rect.left() * cell_size_.width();
@@ -68,7 +76,6 @@ void NvimUIWidget::redrawCells(QRegion dirty_cells) {
     }
     this->update(dirty_pixels);
 }
-
 
 void NvimUIWidget::paintDebugGrid(QPaintEvent* event, QPainter* painter) {
     painter->setPen(Qt::red);
@@ -89,19 +96,18 @@ void NvimUIWidget::paintDebugGrid(QPaintEvent* event, QPainter* painter) {
 }
 
 void NvimUIWidget::paintEvent(QPaintEvent* event) {
+    if (!state_)
+        return;
+
     auto redraw_region = event->region();
     auto t0 = std::chrono::steady_clock::now();
 
     QPainter painter(this);
     painter.setFont(font_);
 
-    auto const& default_highlight = state_->highlight(0);
-
     // always draw areas outside grid
     {
-        auto color = default_highlight.reverse ?
-            default_highlight.effective_foreground() :
-            default_highlight.effective_background();
+        auto color = state_->default_background;
         painter.fillRect(QRectF(0, 0, this->width(), grid_offset_.y()), color);
         painter.fillRect(QRectF(0, 0, grid_offset_.x(), this->height()), color);
 
@@ -113,10 +119,10 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
 
     int text_draw_cnt = 0, text_draw_noncached_cnt = 0;
 
-    QSize nvim_size = state_->size();
+    QSize nvim_size = state_->size;
     for (int y = 0 ; y < nvim_size.height() ; y += 1) {
         for (int x = 0 ; x < nvim_size.width() ;) {
-            auto const& cell = state_->cell_at(x, y);
+            auto const& cell = state_->cells[y][x];
             QPointF pt_lefttop(grid_offset_.x() + x * cell_size_.width(),
                                grid_offset_.y() + y * cell_size_.height());
             int affected_cols = std::max(1, cell.contiguous_cols);
@@ -130,15 +136,15 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
                 continue;
             }
 
-            auto const& highlight = state_->highlight(cell.highlight_id);
+            auto const& highlight = *cell.highlight;
             bool reverse_color = highlight.reverse;
             bool draw_horizontal_cursor = false;
             bool draw_vertical_cursor = false;
 
             // draw cursor?
             // The cursor (if valid) must be at the begin of contiguous cols
-            if (QPoint(x, y) == state_->cursor()) {
-                auto const& modeinfo = state_->modeinfo();
+            if (QPoint(x, y) == state_->cursor) {
+                auto const& modeinfo = state_->modeinfo;
                 // TODO: modeinfo.attr_id seems useless now, we just use reversed color for now
                 if (modeinfo.cursor_shape == "block")
                     reverse_color = !reverse_color;
@@ -148,14 +154,13 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
                     draw_vertical_cursor = true;
             }
 
-            painter.fillRect(affected_rect,
-                             reverse_color ?
-                             highlight.effective_foreground() :
-                             highlight.effective_background());
+            auto highlight_fg = highlight.foreground.isValid() ? highlight.foreground : state_->default_foreground;
+            auto highlight_bg = highlight.background.isValid() ? highlight.background : state_->default_background;
 
-            QPen pen(reverse_color ?
-                     highlight.effective_background() :
-                     highlight.effective_foreground());
+            painter.fillRect(affected_rect,
+                             reverse_color ?  highlight_fg : highlight_bg);
+
+            QPen pen(reverse_color ?  highlight_bg : highlight_fg);
             painter.setPen(pen);
 
             if (draw_horizontal_cursor)
@@ -212,10 +217,8 @@ void NvimUIWidget::paintEvent(QPaintEvent* event) {
     }
 
     if (!im_preedit_text_.isEmpty()) {
-        QPen pen(default_highlight.reverse ?
-                 default_highlight.effective_background() :
-                 default_highlight.effective_foreground());
-        auto cursor = state_->cursor();
+        QPen pen(state_->default_foreground);
+        auto cursor = state_->cursor;
         QPointF pt_lefttop(grid_offset_.x() + cursor.x() * cell_size_.width(),
                            grid_offset_.y() + cursor.y() * cell_size_.height());
         QFont font = font_;
@@ -248,8 +251,6 @@ void NvimUIWidget::keyPressEvent(QKeyEvent* event) {
 }
 
 QVariant NvimUIWidget::inputMethodQuery(Qt::InputMethodQuery query) const {
-    QPoint cursor = state_->cursor();
-
     switch (query) {
         case Qt::ImEnabled:
             return true;
@@ -257,7 +258,7 @@ QVariant NvimUIWidget::inputMethodQuery(Qt::InputMethodQuery query) const {
             return font_;
         case Qt::ImCursorRectangle:
             {
-                QPoint cursor = state_->cursor();
+                QPoint cursor = state_ ? state_->cursor : QPoint(0, 0);
                 return QRect(grid_offset_.x() + cursor.x() * cell_size_.width(),
                              grid_offset_.y() + cursor.y() * cell_size_.height(),
                              cell_size_.width(), cell_size_.height());
@@ -274,7 +275,7 @@ void NvimUIWidget::inputMethodEvent(QInputMethodEvent* event) {
         << event->preeditString() << event->commitString()
         << event->replacementLength() << event->replacementStart();
 
-    QPoint cursor = state_->cursor();
+    QPoint cursor = state_ ? state_->cursor : QPoint(0, 0);
     im_preedit_text_ = event->preeditString();
     this->update(grid_offset_.x() + cursor.x() * cell_size_.width(),
                  grid_offset_.y() + cursor.y() * cell_size_.height(),

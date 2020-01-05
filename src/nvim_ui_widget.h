@@ -23,7 +23,7 @@ private:
     QString im_preedit_text_;
     Qt::MouseButton pressed_mouse_btn_;
 
-    NvimUIState* state_; // not owned
+    std::shared_ptr<NvimUIState> state_;
 
     QCache<QPair<uint32_t, QString>, QStaticText> static_texts_;
 
@@ -41,7 +41,8 @@ signals:
     void mouseInput(MouseInputParams params);
 
 public slots:
-    void redrawCells(QRegion dirty_cells);
+    void updateState(std::shared_ptr<NvimUIState> state,
+                     QRegion dirty_cells, bool defaults_updated);
 
 private:
 
@@ -51,8 +52,7 @@ private:
     void paintDebugGrid(QPaintEvent* event, QPainter* painter);
 
 public:
-    NvimUIWidget(NvimUIState* state,
-                 QWidget* parent=nullptr);
+    NvimUIWidget(QWidget* parent=nullptr);
 
     void setFont(QFont const& font);
     QSize grid_size() const { return grid_size_; }
